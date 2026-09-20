@@ -191,11 +191,35 @@ Two screens exist, never both at once.
 included), and a gear for settings. A Resume button appears when a puzzle is in progress.
 
 **How to play** — the last button on the menu, "Haven't caused a Hoopla before?". It covers
-the controls first, because those were the one thing the game explained nowhere: the rules
-are printed under every board and the rule reminders teach them in play, but nothing said
-that a square cycles empty → X → hoop. Then the three rules, each on a hand-built 3×3, and
-what Hint, Check and Give up cost. The board screen carries a one-line version of the
-controls too, for the majority who will never open a tutorial.
+the controls first, because those were the one thing the game explained nowhere. Then the
+three rules, each on a hand-built 3×3, and what Hint, Check and Give up cost. It ends with
+"Try it out", which starts the tutorial. The board screen carries a one-line version of the
+controls, for the majority who will never open any of this.
+
+The board no longer prints the rules under every puzzle. They are on the how-to-play page,
+the reminders teach them in play, and the header chip carries the only board-specific part
+(how many hoops a colour holds), so the space is better spent.
+
+## The tutorial
+
+A fixed 4×4, checked to have exactly one solution, run on the real board with the real
+drawing and the real input, so what is learned is what the game actually does. There is no
+clock and no score, and Undo, Clear, Hint and Check are hidden: nothing to do here but the
+five steps.
+
+| Stage | Teaches | Offers |
+| --- | --- | --- |
+| 1 | A square cycles empty → X → hoop | — |
+| 2 | Hoops never touch | Blank out around stars |
+| 3 | Every colour holds its number | Blank out a full colour |
+| 4 | The edge numbers count their line | Blank out a full row or column |
+| 5 | Finish the board unaided | — |
+
+The point of the middle three is that each rule arrives immediately before the helper that
+acts on it, so a player meets the setting at the moment it means something rather than as a
+line in the gear. Accepting switches it on for good; declining leaves it off and moves on.
+Stage 1 and stage 5 wait on the board, the rest on a button, so a stray tap cannot skip a
+lesson.
 
 The example boards are written out by hand rather than generated — the generator starts at
 6×6, and an example wants to be small enough to take in at a glance — but they are drawn

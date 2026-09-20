@@ -52,6 +52,7 @@ let placements = 0, placedAt = new Map(), shows = 0; const GRACE_MS = 3000;
 // ---------- screens ----------
 let pickerView = 'menu', settingsFrom = null; // where the gear was pressed
 function showPicker(view = 'menu') {
+  if (tutorial) endTutorial();
   $('dialog').classList.remove('show', 'blur'); $('game').classList.remove('dialog-up');
   if (view !== 'settings') settingsFrom = null;
   pickerView = view;
@@ -122,6 +123,119 @@ function renderMenu() {
   if (saved) $('resumeInfo').textContent = `${saved.P.daily ? 'Daily' : cap(saved.P.difficulty)} board, paused at ${fmt(saved.elapsed)}`;
   $('menuNote').textContent = 'Everyone gets the same daily board. It changes at midnight New York time.';
 }
+// ---------- the tutorial ----------
+// A fixed 4x4, checked by hand to have exactly one solution. Small enough to
+// finish in a minute, big enough for all three rules to bite. It runs on the
+// real board, with the real drawing and the real input, so what is learned here
+// is what the game actually does.
+let tutorial = null;
+const TUT = {
+  W: 4, H: 4, k: 1,
+  mask: Array(16).fill(true),
+  region: [0,0,0,0, 0,2,1,1, 2,2,3,1, 3,3,3,3],
+  rowT: [1,1,1,1], colT: [1,1,1,1],
+  solution: [1, 7, 8, 14],
+  givens: [], regions: true, uniform: true, R: 4,
+  code: 'TUTORIAL', difficulty: 'easy',
+  grade: { maxLevel: 1, steps: 4, byLevel: { 1: 4 } },
+};
+// Squares touching the first hoop, which stage 2 is about.
+const TUT_TOUCHING = [0, 2, 4, 5, 6];
+
+const STAGES = [
+  { text: 'Tap the ringed square twice \u2014 once for an X, again for a hoop.',
+    note: 'A square goes empty, then X, then hoop, then empty again.',
+    ring: [1],
+    done: () => marks[1] === STAR },
+
+  { text: 'Hoops never touch, so none of the squares around that one can hold a hoop.',
+    note: 'Not side by side, and not at the corners either.',
+    ring: TUT_TOUCHING, context: [1],
+    offer: 'auto', opt: 'optAuto',
+    ask: 'Want the squares around every hoop blanked out for you from now on?' },
+
+  { text: 'Every colour holds one hoop, and this colour has its hoop now.',
+    note: 'So the rest of that colour is out too.',
+    ringRegion: 0, context: [1],
+    offer: 'fillRegion', opt: 'optFillRegion',
+    ask: 'Want a colour blanked out once it is full?' },
+
+  { text: 'The numbers along the edges count that row and column. This row has its hoop.',
+    note: 'Every row and column here holds exactly one.',
+    ringRow: 0, context: [1],
+    offer: 'fillLine', opt: 'optFillLine',
+    ask: 'Want a row or column blanked out once it is full?' },
+
+  { text: 'That is all of it. Three hoops left \u2014 see if you can place them.',
+    note: 'One in every colour, one in every row and column, and none of them touching.',
+    done: () => TUT.solution.every(c => marks[c] === STAR) },
+];
+
+function tutRing(st) {
+  if (st.ring) return st.ring.slice();
+  if (st.ringRegion !== undefined) return TUT.region.map((r, c) => r === st.ringRegion ? c : -1).filter(c => c >= 0 && marks[c] !== STAR);
+  if (st.ringRow !== undefined) return [0,1,2,3].map(x => st.ringRow * 4 + x).filter(c => marks[c] !== STAR);
+  return [];
+}
+function showStage() {
+  const st = STAGES[tutorial.i];
+  if (!st) return tutDone();
+  const ring = tutRing(st);
+  curHint = ring.length ? { targets: ring, cells: [...ring, ...(st.context || [])], kind: 'star' } : null;
+  draw();
+  const buttons = st.offer
+    ? [['Yes please', true, () => tutAccept(st)], ['Not now', false, () => tutNext()]]
+    : [];
+  showBar(st.offer ? `${st.text} ${st.ask}` : st.text, '', buttons, st.note);
+}
+function tutAccept(st) {
+  settings[st.offer] = true; saveSettings(); $(st.opt).checked = true;
+  tutNext();
+}
+function tutNext() { tutorial.i++; showStage(); }
+// Only the stages with a `done` test wait on the board; the rest are answered
+// with a button, so a change to the board cannot skip past them.
+function tutProgress() {
+  if (!tutorial) return;
+  const st = STAGES[tutorial.i];
+  if (st && st.done && st.done()) { if (tutorial.i === STAGES.length - 1) return tutDone(); tutNext(); }
+}
+function tutDone() {
+  curHint = null; solved = true; clearInterval(timerId); draw(true);
+  const on = ['auto', 'fillRegion', 'fillLine'].filter(k => settings[k]).length;
+  $('winTitle').textContent = 'That is the whole game';
+  $('winScore').innerHTML = `<dd class="note">${on === 3
+    ? 'With all three helpers on, the board will keep itself tidy while you think.'
+    : on ? 'You can switch the other helpers on any time under the gear.'
+         : 'The helpers are all under the gear if you change your mind.'}</dd>`;
+  $('winPick').hidden = true;
+  $('winMenu').hidden = false;
+  $('winNew').textContent = 'Play a real one';
+  $('win').classList.add('show');
+}
+function startTutorial() {
+  tutorial = { i: 0 };
+  lastOpts = { opts: { shape: 'square', k: 1, size: 0, difficulty: 'easy' }, key: null, source: 'own' };
+  P = Logic.fromJSON(JSON.parse(JSON.stringify(TUT)));
+  marks = Logic.startMarks(P);
+  givenSet = new Set(); history = []; placements = 0; placedAt = new Map();
+  hints = 0; shows = 0; solved = false; gaveUp = false; revealed = false; curHint = null;
+  showGame(); clearSaved();
+  $('busy').classList.remove('show'); $('win').classList.remove('show'); $('board').style.opacity = 1;
+  colorRegions(); buildBoard(); renderRules(); renderDev(); renderCounts();
+  $('gameTitle').textContent = 'How to play';
+  $('quit').textContent = 'Leave';
+  $('gameCode').hidden = true;
+  $('note').textContent = '';
+  elapsed = 0; $('timer').textContent = '';
+  $('game').classList.add('tut');
+  showStage();
+}
+function endTutorial() {
+  tutorial = null; $('quit').textContent = 'Give up'; $('game').classList.remove('tut');
+  $('gameCode').hidden = false; $('timer').textContent = '0:00';
+}
+
 // ---------- how to play ----------
 // Small hand-built boards rather than generated ones: the generator starts at
 // 6x6, and an example wants to be small enough to take in at a glance. They
@@ -192,7 +306,7 @@ function renderLearn() {
 }
 $('menuLearn').onclick = () => { renderLearn(); showPicker('learn'); };
 $('learnBack').onclick = () => showPicker('menu');
-$('learnStart').onclick = () => startPuzzle({ shape: 'square', k: 1, size: 0, difficulty: 'easy' }, null, 'own');
+$('learnStart').onclick = startTutorial;
 
 function renderWinPick() { // change your mind about the next board without leaving the card
   segChoice($('winRungSeg'), Logic.RUNGS.map(r => [r.key, r.label]), settings.rung,
@@ -245,6 +359,7 @@ function prefetch() { // build the likely next board quietly, in slices, while t
   Logic.buildAsync(Engine, opts, p => { building = false; if (p) { nextUp = p; nextKey = key; } }, 8000);
 }
 function startPuzzle(opts, key, source) {
+  if (tutorial) endTutorial();
   lastOpts = { opts, key, source: source || (lastOpts && lastOpts.source) || 'own',
     sel: { rung: settings.rung, pickShape: settings.pickShape } };
   showGame(); clearSaved();
@@ -266,6 +381,7 @@ $('menuDaily').onclick = () => { const o = Logic.dailyOptions(); startPuzzle({ .
 $('pickStart').onclick = () => startPuzzle(pickOpts(), optsKey({ rung: settings.rung, pickShape: settings.pickShape }), 'pick');
 $('ownStart').onclick = () => startPuzzle(ownOpts(), optsKey(ownOpts()), 'own');
 $('winNew').onclick = () => {
+  if (tutorial) return startPuzzle({ shape: 'square', k: 1, size: 0, difficulty: 'easy' }, null, 'own');
   if (lastOpts && lastOpts.source === 'daily') return showPicker('menu');
   if (lastOpts && lastOpts.source === 'pick') return startPuzzle(pickOpts(), optsKey({ rung: settings.rung, pickShape: settings.pickShape }), 'pick');
   return startPuzzle(ownOpts(), optsKey(ownOpts()), 'own');
@@ -298,6 +414,7 @@ window.addEventListener('pagehide', () => { if (P && !solved && !$('game').hidde
 
 // ---------- give up ----------
 $('quit').onclick = () => {
+  if (tutorial) return showPicker('menu');
   if (!P || solved) return showPicker('menu');
   closeBar();
   showModal('Leave this puzzle?',
@@ -347,11 +464,6 @@ function renderNote() {
 }
 function renderRules() {
   const k = P.k, s = k === 1 ? 'hoop' : 'hoops', c = Logic.costs(P);
-  $('rules').textContent = !P.regions
-    ? `Drop ${P.solution.length} hoops so each row and column holds the number shown at its edges. Hoops never touch, not even diagonally. There are no regions to help you here.`
-    : P.uniform
-      ? `Drop hoops so every colored region, every row and every column holds exactly ${k} ${s}. Hoops never touch, not even diagonally.`
-      : `Drop hoops so every colored region holds exactly ${k} ${s}, and each row and column holds the number shown at its edges. Hoops never touch, not even diagonally.`;
   const kc = $('gameK');
   kc.hidden = !P.regions; // a blank board has no colours to count against
   if (P.regions) {
@@ -364,8 +476,10 @@ function renderRules() {
       + `<circle cx="12" cy="12" r="5.1" fill="none" stroke="var(--line)" stroke-width="1.6"/></svg>`
       + `<span class="kfull">${k} per colour</span><span class="kshort">\u00d7 ${k}</span>`;
   }
-  $('scoring').textContent = `Target time ${fmt(Logic.par(P))}. Each extra hoop adds ${c.extraStar}s, each reveal ${c.reveal}s, each hint ${c.hint}s.`;
+  $('scoring').textContent = tutorial ? ''
+    : `Target time ${fmt(Logic.par(P))}. Each extra hoop adds ${c.extraStar}s, each reveal ${c.reveal}s, each hint ${c.hint}s.`;
 }
+
 function renderDev() {
   const s = P.stats || {}, cells = P.mask.filter(Boolean).length;
   $('devStats').innerHTML = `<dt>Board</dt><dd>${P.W} × ${P.H}, ${cells} cells</dd><dt>Regions</dt><dd>${P.R}</dd>`
@@ -463,7 +577,7 @@ function draw(winAnim) {
   for (let x = 0; x < W; x++) if (P.mask.some((m, i) => m && i % W === x)) {
     clue(M + x * CS + CS / 2, M / 2, colT[x], a.cc[x]); clue(M + x * CS + CS / 2, M + H * CS + M / 2, colT[x], a.cc[x]); }
   drawHint();
-  if (a.done && !solved) win();
+  if (a.done && !solved && !tutorial) win();
 }
 function win() {
   solved = true; tick(); clearInterval(timerId); closeBar(); draw(true); clearSaved();
@@ -559,6 +673,7 @@ function change(fn) { // every board change runs through here, so star placement
     else if (before[c] === STAR && marks[c] !== STAR) { const t = placedAt.get(c);
       if (t !== undefined && now - t < GRACE_MS) placements--; placedAt.delete(c); } }
   renderCounts();
+  tutProgress();
 }
 function nextState(c) { if (marks[c] === STAR) return EMPTY;
   if (marks[c] === DOT || marks[c] === START || autoSet.has(c)) return STAR; return DOT; }
@@ -676,7 +791,7 @@ function ruleTrip(c, before) {
   return null;
 }
 function offerHelper(c, before) {
-  if (settings.quiet || solved || modalOpen()) return;
+  if (settings.quiet || solved || modalOpen() || tutorial) return;
   const t = ruleTrip(c, before); if (!t) return;
   const all = trips(), seen = (all[t.kind] || 0) + 1;
   all[t.kind] = seen; saveTrips(all);
@@ -708,7 +823,8 @@ $('gameCode').onclick = () => {
 };
 board.addEventListener('contextmenu', e => e.preventDefault());
 board.addEventListener('pointerdown', e => { if (!P || solved) return; const c = cellAt(e);
-  closeBar(); if (c < 0 || givenSet.has(c)) { draw(); return; }
+  if (!tutorial) closeBar();
+  if (c < 0 || givenSet.has(c)) { draw(); return; }
   snapshot();
   const was = marks.slice();
   if (e.button === 2) { change(() => { marks[c] = marks[c] === STAR ? EMPTY : STAR; }); draw();

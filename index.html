@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Hoopla</title>
-<meta name="build" content="0.8.0 · 2026-09-20">
+<meta name="build" content="0.9.0 · 2026-09-20">
 <meta name="description" content="A logic puzzle game in the family of Sudoku, Star Battle and Queens. Drop hoops so every region, row and column holds the right number, and no two hoops ever touch.">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
@@ -175,6 +175,10 @@ details.dev summary { cursor: pointer; font-weight: 600; min-height: 32px; }
 .hint-hl { animation: glow 1.2s ease-in-out infinite alternate; }
 @keyframes glow { from { opacity: .55; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .star-win, .hint-hl { animation: none; } }
+/* The tutorial has no score and no clock, so the tools that serve them go. */
+#game.tut #undo, #game.tut #clear, #game.tut #hint, #game.tut #check, #game.tut .counts { display: none; }
+#game.tut #quit { min-width: 160px; }
+#game.tut .timer { display: none; }
 @media (min-width: 880px) { #game { padding-top: 28px; } .toolbar button { flex: 0 1 auto; min-width: 110px; } }
 </style>
 </head>
@@ -251,7 +255,7 @@ details.dev summary { cursor: pointer; font-weight: 600; min-height: 32px; }
       <p class="sub">Every puzzle has exactly one solution, and it never needs a guess.</p>
     </section>
 
-    <div class="rowbtns"><button class="primary" id="learnStart">Play an easy one</button><button id="learnBack">Back</button></div>
+    <div class="rowbtns"><button class="primary" id="learnStart">Try it out</button><button id="learnBack">Back</button></div>
   </div>
 
   <div class="view card2" id="viewSettings" hidden>
@@ -306,7 +310,6 @@ details.dev summary { cursor: pointer; font-weight: 600; min-height: 32px; }
   <div class="counts" id="hintCount"></div>
   <div class="bar" id="hintBar" hidden><div class="bartext"><p id="hintText"></p><p class="barnote" id="barNote"></p></div><div class="barbtns" id="barBtns"></div></div>
   <p class="note" id="note"></p>
-  <p class="help" id="rules"></p>
   <p class="help" id="controls">Tap a square once for an X, twice for a hoop. Drag to X out a run.</p>
   <p class="help" id="scoring"></p>
   <button class="codechip" id="gameCode" title="Copy this puzzle's code"></button>
