@@ -126,16 +126,23 @@ as a broken page rather than a hard puzzle.
 When a hoop lands on a square a helper would have blanked, the game names the rule that
 square breaks and offers the helper:
 
-| Trip | Rule | Helper offered |
-| --- | --- | --- |
-| The square touches a hoop already placed | Hoops never touch | Blank out around stars |
-| Its colour already holds its hoops | Every colour holds N | Blank out finished units |
-| Its row or column already holds its hoops | Every line holds its number | Blank out finished units |
+| Trip | Rule | Screen | Helper offered |
+| --- | --- | --- | --- |
+| The square touches a hoop already placed | Hoops never touch | "Hoops can never touch" | Blank out around stars |
+| Its colour already holds its hoops | Every colour holds N | "That colour already has its hoop" | Blank out a full colour |
+| Its row or column already holds its hoops | Every line holds its number | "That row already has its hoop" | Blank out a full row or column |
 
-Asked on the 1st, 6th, 11th trip of that rule and so on — often enough to teach, rarely
-enough that a player who prefers marking by hand is not nagged. Three refusals of a helper
-stops it being offered for good, and at most one offer interrupts any single board. Counts
-live in `hoopla-ruletrips`.
+One screen per rule, each explaining that rule in its own terms, and each offering only the
+help for it — which is why "blank out finished units" is two settings rather than one. Asked
+on the 1st, 4th, 7th trip of that rule and so on: often enough to teach, rarely enough to
+nag. There is no cap beyond that — declining does not stop them, and they can fire more than
+once on a board — because "Never show rule reminders" in the gear is the way to switch them
+off — offered both in the gear and as a third choice on the reminder itself, since the
+moment someone wants them gone is the moment one is in front of them. Counts live in
+`hoopla-ruletrips`.
+
+While one is up the board is not merely blurred but flattened to grey, since blurring alone
+leaves the regions' shapes and colours readable through it.
 
 The check asks whether a hoop *on that square* breaks a rule, judged against the board as it
 stood before the move, and deliberately ignores what was marked on the square itself: a hoop

@@ -21,7 +21,10 @@ const Logic = (() => {
   function autoBlanks(P, marks, opts) { // derived, so removing a star removes its blanks
     const s = new Set();
     if (opts.around) for (let c = 0; c < marks.length; c++) if (marks[c] === STAR) for (const n of neighbours(P, c)) if (marks[n] === EMPTY) s.add(n);
-    if (opts.fill) for (const u of P.units) { let n = 0; for (const c of u.cells) if (marks[c] === STAR) n++;
+    // opts.region covers rule 1, opts.line rules 2: each is offered separately.
+    for (const u of P.units) {
+      if (!(u.kind === 'region' ? opts.region : opts.line)) continue;
+      let n = 0; for (const c of u.cells) if (marks[c] === STAR) n++;
       if (n === u.target && u.target > 0) for (const c of u.cells) if (marks[c] === EMPTY) s.add(c); }
     return s; }
 

@@ -11,7 +11,7 @@ const CS = 40, M = 30;
 
 // Bump BUILD before handing the URL to testers: it is what tells you which
 // version a bug report came from. See "Build stamp" in the README.
-const BUILD = '0.3.0 · 2026-09-20';
+const BUILD = '0.4.0 · 2026-09-20';
 
 // Storage moved from the prototype's old key prefix to hoopla-. Carry anything
 // already on the device across once, so nobody loses a puzzle in progress.
@@ -31,8 +31,13 @@ const NSKEY = 'hoopla-', OLDKEY = 'starproto-';
 const SAVE = NSKEY + 'inprogress';
 
 let settings = { rung: 'gentle', pickShape: 'random', shape: 'square', k: 1, size: 0, difficulty: 'easy', holes: false,
-  auto: false, fill: false, err: true };
-try { const s = JSON.parse(localStorage.getItem(NSKEY + 'settings') || 'null'); if (s) Object.assign(settings, s); } catch (e) {}
+  auto: false, fillRegion: false, fillLine: false, err: true, quiet: false };
+try { const s = JSON.parse(localStorage.getItem(NSKEY + 'settings') || 'null');
+  // The one "blank out finished units" switch became one per rule; carry it across.
+  let moved = false;
+  if (s && 'fill' in s && !('fillRegion' in s)) { s.fillRegion = s.fill; s.fillLine = s.fill; delete s.fill; moved = true; }
+  if (s) Object.assign(settings, s);
+  if (moved) saveSettings(); } catch (e) {}
 if (!SHAPES.some(([v]) => v === settings.shape)) settings.shape = 'square';
 if (settings.size === 1) settings.size = 0;
 if (settings.k > 2) settings.k = 2;
@@ -46,7 +51,7 @@ let placements = 0, placedAt = new Map(), shows = 0; const GRACE_MS = 3000;
 // ---------- screens ----------
 let pickerView = 'menu', beforeSettings = 'menu';
 function showPicker(view = 'menu') {
-  $('dialog').classList.remove('show', 'blur');
+  $('dialog').classList.remove('show', 'blur'); $('game').classList.remove('dialog-up');
   if (view === 'settings' && pickerView !== 'settings') beforeSettings = pickerView;
   pickerView = view;
   $('game').hidden = true; $('picker').hidden = false;
@@ -119,7 +124,7 @@ function renderPickers() {
   segChoice($('sizeSeg'), SZ, settings.size, v => { settings.size = v; saveSettings(); renderPickers(); });
   segChoice($('diffSeg'), DIFF, settings.difficulty, v => { settings.difficulty = v; saveSettings(); renderPickers(); });
   $('optAuto').checked = settings.auto;
-  $('optFill').checked = settings.fill; $('optErr').checked = settings.err;
+  $('optFillRegion').checked = settings.fillRegion; $('optFillLine').checked = settings.fillLine; $('optErr').checked = settings.err; $('optQuiet').checked = settings.quiet;
   $('kField').style.display = settings.shape === 'blank' ? 'none' : '';
   const same = lastOpts && lastOpts.source === 'own' && optsKey(lastOpts.opts) === optsKey(ownOpts());
   $('ownStart').textContent = same ? 'Another one' : 'Start';
@@ -131,8 +136,10 @@ function segChoice(el, items, value, onPick) {
 }
 
 $('optAuto').onchange = e => { settings.auto = e.target.checked; saveSettings(); if (P) draw(); };
-$('optFill').onchange = e => { settings.fill = e.target.checked; saveSettings(); if (P) draw(); };
+$('optFillRegion').onchange = e => { settings.fillRegion = e.target.checked; saveSettings(); if (P) draw(); };
+$('optFillLine').onchange = e => { settings.fillLine = e.target.checked; saveSettings(); if (P) draw(); };
 $('optErr').onchange = e => { settings.err = e.target.checked; saveSettings(); if (P) draw(); };
+$('optQuiet').onchange = e => { settings.quiet = e.target.checked; saveSettings(); };
 
 // ---------- building ----------
 let nextUp = null, nextKey = null, building = false;
@@ -165,7 +172,6 @@ function begin(p, opts) {
   if (opts && opts.daily) p.daily = opts.daily;
   P = p; marks = Logic.startMarks(P); givenSet = new Set(P.givens); history = [];
   solved = false; revealed = false; gaveUp = false; hints = 0; placements = 0; placedAt = new Map(); shows = 0;
-  offeredHere = false;
   colorRegions(); startTimer(0); buildBoard(); draw(); renderRules(); renderDev(); renderCounts(); renderNote(); renderPickers();
   setTimeout(prefetch, 600);
 }
@@ -199,7 +205,6 @@ $('resumeBtn').onclick = () => { const s = savedGame(); if (!s) return;
   P = Logic.fromJSON(s.P); marks = Uint8Array.from(s.marks); givenSet = new Set(P.givens); history = [];
   solved = false; revealed = false; gaveUp = false; hints = s.hints || 0; placements = s.placements || 0; shows = s.shows || 0;
   placedAt = new Map(); lastOpts = s.opts ? { opts: s.opts, key: s.key } : null;
-  offeredHere = false;
   colorRegions(); startTimer(s.elapsed || 0); buildBoard(); draw(); renderRules(); renderDev(); renderCounts(); renderNote();
 };
 window.addEventListener('pagehide', () => { if (P && !solved && !$('game').hidden) pauseAndLeave(); });
@@ -337,7 +342,7 @@ function analyse() {
 }
 function draw(winAnim) {
   const { W, H, rowT, colT } = P, a = analyse();
-  autoSet = Logic.autoBlanks(P, marks, { around: settings.auto, fill: settings.fill });
+  autoSet = Logic.autoBlanks(P, marks, { around: settings.auto, region: settings.fillRegion, line: settings.fillLine });
   gMarks.innerHTML = ''; gClues.innerHTML = ''; gShade.innerHTML = '';
   // a row or column with nothing left to decide fades back a little
   const settled = (cells) => { let any = false;
@@ -484,18 +489,20 @@ function showModal(title, note, buttons) {
   $('dialogTitle').textContent = title;
   $('dialogNote').textContent = note || '';
   const box = $('dialogBtns'); box.innerHTML = '';
-  for (const [label, primary, fn] of buttons) {
+  for (const [label, primary, fn, cls] of buttons) {
     const b = document.createElement('button');
     b.textContent = label; if (primary) b.className = 'primary';
+    if (cls) b.className = ((b.className || '') + ' ' + cls).trim();
     b.onclick = () => { closeModal(); fn(); };
     box.appendChild(b);
   }
   pauseClock();
+  $('game').classList.add('dialog-up');
   $('dialog').classList.add('show', 'blur');
 }
 // Restarts the clock on the way out. Anything that ends the round (giving up,
 // leaving) stops it again itself, so it does not matter that this runs first.
-function closeModal() { $('dialog').classList.remove('show', 'blur'); resumeClock(); }
+function closeModal() { $('game').classList.remove('dialog-up'); $('dialog').classList.remove('show', 'blur'); resumeClock(); }
 function modalOpen() { return $('dialog').classList.contains('show'); }
 
 // ---------- learning the rules ----------
@@ -508,17 +515,17 @@ const TRIPS = NSKEY + 'ruletrips';
 function trips() { try { return JSON.parse(localStorage.getItem(TRIPS) || '{}'); } catch (e) { return {}; } }
 function saveTrips(t) { try { localStorage.setItem(TRIPS, JSON.stringify(t)); } catch (e) {} }
 
-// The smallest unit already holding all the hoops it needs.
-function fullUnit(c, before) {
+// The unit of a given kind that already holds all the hoops it needs.
+function fullUnit(c, before, want) {
   for (const u of P.units) {
+    const isRegion = u.kind === 'region';
+    if (want === 'region' ? !isRegion : isRegion) continue;
     if (u.target <= 0 || !u.cells.includes(c)) continue;
     let n = 0; for (const x of u.cells) if (before[x] === STAR) n++;
     if (n >= u.target) return u;
   }
   return null;
 }
-// Which rule a hoop on this square breaks, judged against the board as it was
-// before the move. Only reports rules whose helper is still switched off.
 // Does a hoop here sit against one already on the board? Asked of the square
 // itself, not of what is marked on it: a hoop is normally placed on a square
 // the player has already X-ed, and autoBlanks only reports empty squares.
@@ -532,43 +539,51 @@ function touchesHoop(c, before) {
   }
   return false;
 }
+const hoopWord = n => n === 1 ? '1 hoop' : `${n} hoops`;
+
+// One screen per rule, each explaining that rule in its own terms and offering
+// only the help for it. Judged against the board as it stood before the move.
 function ruleTrip(c, before) {
-  if (!settings.auto && touchesHoop(c, before))
-    return { kind: 'touch', helper: 'auto', opt: 'optAuto',
-      title: 'Hoops can never touch',
-      note: 'That square is right next to a hoop you have already placed, and hoops never touch, not even at the corners.',
-      offer: 'Want the squares around each hoop blanked out from now on?' };
-  if (!settings.fill) {
-    const u = fullUnit(c, before);
-    if (!u) return null;
-    const many = u.target === 1 ? 'one hoop' : `${u.target} hoops`;
-    return { kind: u.kind, helper: 'fill', opt: 'optFill',
-      title: u.kind === 'region' ? 'That colour is already full' : `That ${u.kind} is already full`,
-      note: u.kind === 'region'
-        ? `Every colour holds exactly ${many}, and this one already has what it needs.`
-        : `This ${u.kind} holds ${many}, and it already has what it needs.`,
-      offer: 'Want rows, columns and colours blanked out once they are finished?' };
-  }
+  if (!settings.auto && touchesHoop(c, before)) return {
+    kind: 'touch', helper: 'auto', opt: 'optAuto',
+    title: 'Hoops can never touch',
+    note: 'No two hoops ever sit next to each other, side by side or corner to corner. '
+        + 'That square touches a hoop you have already placed, so it can never hold one.',
+    offer: 'Want every square around a hoop blanked out as you go?' };
+
+  const rg = !settings.fillRegion && fullUnit(c, before, 'region');
+  if (rg) return {
+    kind: 'region', helper: 'fillRegion', opt: 'optFillRegion',
+    title: P.k === 1 ? 'That colour already has its hoop' : 'That colour already has its hoops',
+    note: `Every colour on the board holds exactly ${hoopWord(P.k)}. This one is full already, `
+        + 'so no other square inside it can take one.',
+    offer: 'Want a colour blanked out once it is full?' };
+
+  const ln = !settings.fillLine && fullUnit(c, before, 'line');
+  if (ln) return {
+    kind: 'line', helper: 'fillLine', opt: 'optFillLine',
+    title: `That ${ln.kind} already has ${ln.target === 1 ? 'its hoop' : 'its hoops'}`,
+    note: `The number at the edge is how many hoops this ${ln.kind} holds: ${hoopWord(ln.target)}. `
+        + 'It has them already, so no other square along it can take one.',
+    offer: 'Want a row or column blanked out once it is full?' };
+
   return null;
 }
-let offeredHere = false; // at most one interruption per board
 function offerHelper(c, before) {
-  if (offeredHere || solved || modalOpen()) return;
+  if (settings.quiet || solved || modalOpen()) return;
   const t = ruleTrip(c, before); if (!t) return;
-  const all = trips();
-  const seen = (all[t.kind] || 0) + 1, declined = all[t.helper + ':no'] || 0;
+  const all = trips(), seen = (all[t.kind] || 0) + 1;
   all[t.kind] = seen; saveTrips(all);
-  if (declined >= 3) return;   // asked and answered
-  if (seen % 5 !== 1) return;  // 1st, 6th, 11th, ...
-  offeredHere = true;
+  if (seen % 3 !== 1) return;  // 1st, 4th, 7th, ... of that rule
   // Let the misplaced hoop land and turn red before covering the board.
   setTimeout(() => {
     if (!P || solved || modalOpen()) return;
     showModal(t.title, `${t.note} ${t.offer}`, [
       ['Yes, blank them out', true, () => {
         settings[t.helper] = true; saveSettings(); $(t.opt).checked = true; draw(); }],
-      ['No thanks', false, () => {
-        const a = trips(); a[t.helper + ':no'] = (a[t.helper + ':no'] || 0) + 1; saveTrips(a); }]]);
+      ['No thanks', false, () => {}],
+      ['Stop showing these', false, () => {
+        settings.quiet = true; saveSettings(); $('optQuiet').checked = true; }, 'quietbtn']]);
   }, 450);
 }
 

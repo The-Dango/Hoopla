@@ -119,9 +119,18 @@ details.dev summary { cursor: pointer; font-weight: 600; min-height: 32px; }
 .overlay { position: fixed; inset: 0; z-index: 30; display: none; align-items: center; justify-content: center;
   padding: 16px; overflow-y: auto; overscroll-behavior: contain; background: rgba(10,14,22,.35); }
 .overlay.show { display: flex; }
-.overlay.blur { background: rgba(10,14,22,.5); backdrop-filter: blur(7px); -webkit-backdrop-filter: blur(7px); }
+.overlay.blur { background: rgba(10,14,22,.55); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
+/* A paused board must not be readable. Blurring alone leaves the regions'
+   shapes and colours legible, so flatten it to grey as well. The dialog is a
+   sibling of .boardbox, not a child, so it stays sharp. */
+#game.dialog-up .boardbox { filter: blur(16px) grayscale(1) contrast(.32) opacity(.5); pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { #game.dialog-up .boardbox { filter: grayscale(1) contrast(.2) opacity(.35); } }
 .dialognote { color: var(--muted); font-size: .94rem; margin: 0 0 14px; }
 #dialogBtns { flex-wrap: wrap; gap: 8px; }
+/* The way out sits back from the two real answers. */
+#dialogBtns .quietbtn { background: none; border-color: transparent; color: var(--muted);
+  text-decoration: underline; text-underline-offset: 3px; font-size: .9rem; }
+#dialogBtns .quietbtn:hover { color: var(--ink); border-color: transparent; }
 .card { background: var(--panel); border-radius: 16px; padding: 18px 22px; text-align: center; margin: auto;
   box-shadow: 0 10px 40px rgba(0,0,0,.25); border: 2px solid var(--gold); width: min(420px, 100%); max-height: 100%; overflow-y: auto; }
 .card h2 { margin: 0 0 6px; font-size: 1.5rem; }
@@ -179,8 +188,10 @@ details.dev summary { cursor: pointer; font-weight: 600; min-height: 32px; }
   <div class="view card2" id="viewSettings" hidden>
     <h2>Settings</h2>
     <label class="opt"><input type="checkbox" id="optAuto"> Blank out around stars</label>
-    <label class="opt"><input type="checkbox" id="optFill" checked> Blank out finished rows, columns and regions</label>
+    <label class="opt"><input type="checkbox" id="optFillRegion"> Blank out a colour once it is full</label>
+    <label class="opt"><input type="checkbox" id="optFillLine"> Blank out a row or column once it is full</label>
     <label class="opt"><input type="checkbox" id="optErr" checked> Show rule breaks</label>
+    <label class="opt"><input type="checkbox" id="optQuiet"> Never show rule reminders</label>
     <details class="dev"><summary>Developer info</summary>
       <dl id="devStats"></dl>
       <label class="codebox" style="margin-top:10px">Play a puzzle code<span><input id="codeIn" placeholder="SQ1SE-q1ongt" spellcheck="false"><button id="codeGo">Go</button></span></label>
