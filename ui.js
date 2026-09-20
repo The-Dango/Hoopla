@@ -56,7 +56,7 @@ function showPicker(view = 'menu') {
   if (view !== 'settings') settingsFrom = null;
   pickerView = view;
   $('game').hidden = true; $('picker').hidden = false;
-  for (const [id, key] of [['viewMenu','menu'],['viewPick','pick'],['viewOwn','own'],['viewSettings','settings']]) $(id).hidden = key !== view;
+  for (const [id, key] of [['viewMenu','menu'],['viewPick','pick'],['viewOwn','own'],['viewLearn','learn'],['viewSettings','settings']]) $(id).hidden = key !== view;
   if (view === 'menu') renderMenu();
   prefetch();
 }
@@ -122,6 +122,78 @@ function renderMenu() {
   if (saved) $('resumeInfo').textContent = `${saved.P.daily ? 'Daily' : cap(saved.P.difficulty)} board, paused at ${fmt(saved.elapsed)}`;
   $('menuNote').textContent = 'Everyone gets the same daily board. It changes at midnight New York time.';
 }
+// ---------- how to play ----------
+// Small hand-built boards rather than generated ones: the generator starts at
+// 6x6, and an example wants to be small enough to take in at a glance. They
+// reuse drawHoop and drawX so a hoop here looks like a hoop in play.
+const MC = 34; // cell size for the examples
+function miniBoard(spec) {
+  const { W, H, region = null, marks = {}, rowT = null, colT = null, bad = [] } = spec;
+  const pad = (rowT || colT) ? 18 : 4;
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('viewBox', `0 0 ${pad * 2 + W * MC} ${pad * 2 + H * MC}`);
+  svg.setAttribute('width', pad * 2 + W * MC);
+  svg.setAttribute('height', pad * 2 + H * MC);
+  svg.setAttribute('aria-hidden', 'true');
+  const cells = el('g', {}, svg), grid = el('g', {}, svg), mk = el('g', {}, svg), clue = el('g', {}, svg);
+  let thin = '', thick = '';
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const c = y * W + x, X = pad + x * MC, Y = pad + y * MC;
+    el('rect', { x: X, y: Y, width: MC, height: MC,
+      fill: region ? `var(--r${region[c]})` : 'var(--panel)' }, cells);
+    const g = region ? region[c] : 0;
+    const rOf = (xx, yy) => (xx < 0 || yy < 0 || xx >= W || yy >= H) ? -2 : (region ? region[yy * W + xx] : 0);
+    [[rOf(x + 1, y), `M${X + MC} ${Y}v${MC}`], [rOf(x, y + 1), `M${X} ${Y + MC}h${MC}`],
+     [rOf(x - 1, y), `M${X} ${Y}v${MC}`], [rOf(x, y - 1), `M${X} ${Y}h${MC}`]]
+      .forEach(([o, d], i) => { if (o === g) { if (i < 2) thin += d; } else if (i < 2 || o === -2) thick += d; });
+  }
+  el('path', { d: thin, stroke: 'var(--thin)', 'stroke-width': 1, fill: 'none' }, grid);
+  el('path', { d: thick, stroke: 'var(--line)', 'stroke-width': 2.8, fill: 'none', 'stroke-linecap': 'square' }, grid);
+  for (const k in marks) {
+    const c = +k, X = pad + (c % W) * MC + MC / 2, Y = pad + ((c / W) | 0) * MC + MC / 2;
+    if (marks[c] === 'x') drawX(mk, X, Y, .45);
+    else {
+      // drawHoop sizes itself for a 40px board cell; these are smaller.
+      const g = drawHoop(mk, X, Y, bad.includes(c) ? 'wrong' : 'normal');
+      g.setAttribute('transform', `scale(${MC / 46})`);
+    }
+  }
+  const num = (t, X, Y) => el('text', { x: X, y: Y, 'text-anchor': 'middle', 'dominant-baseline': 'central',
+    'font-size': 12, 'font-weight': 700, fill: 'var(--muted)' }, clue).textContent = t;
+  if (rowT) rowT.forEach((t, y) => { num(t, pad / 2, pad + y * MC + MC / 2); num(t, pad * 1.5 + W * MC, pad + y * MC + MC / 2); });
+  if (colT) colT.forEach((t, x) => { num(t, pad + x * MC + MC / 2, pad / 2); num(t, pad + x * MC + MC / 2, pad * 1.5 + H * MC); });
+  return svg;
+}
+function renderLearn() {
+  const put = (id, node, caption) => {
+    const f = $(id); f.innerHTML = ''; f.appendChild(node);
+    if (caption) { const c = document.createElement('figcaption'); c.textContent = caption; f.appendChild(c); }
+  };
+  // One square, through its three states.
+  const cyc = $('learnCycle'); cyc.innerHTML = '';
+  [['Empty', {}], ['Tap once', { 0: 'x' }], ['Tap again', { 0: 'hoop' }], ['And again', {}]]
+    .forEach(([label, marks], i) => {
+      if (i) { const a = document.createElement('span'); a.className = 'arrow'; a.textContent = '\u2192'; cyc.appendChild(a); }
+      const f = document.createElement('figure');
+      f.appendChild(miniBoard({ W: 1, H: 1, marks }));
+      const c = document.createElement('figcaption'); c.textContent = label; f.appendChild(c);
+      cyc.appendChild(f);
+    });
+  // Three colours, one hoop in each, the rest ruled out.
+  put('learnRegion', miniBoard({ W: 3, H: 3,
+    region: [0, 1, 1, 0, 2, 1, 2, 2, 2],
+    marks: { 0: 'hoop', 2: 'hoop', 7: 'hoop' } }), 'One hoop in every colour');
+  // Edge numbers.
+  put('learnLine', miniBoard({ W: 3, H: 3, rowT: [1, 0, 1], colT: [1, 0, 1],
+    marks: { 0: 'hoop', 8: 'hoop' } }), 'The 0 row and column stay empty');
+  // Touching, and not.
+  put('learnBad', miniBoard({ W: 3, H: 3, marks: { 0: 'hoop', 4: 'hoop' }, bad: [0, 4] }), 'Touching at the corner');
+  put('learnGood', miniBoard({ W: 3, H: 3, marks: { 0: 'hoop', 2: 'hoop' } }), 'A square apart is fine');
+}
+$('menuLearn').onclick = () => { renderLearn(); showPicker('learn'); };
+$('learnBack').onclick = () => showPicker('menu');
+$('learnStart').onclick = () => startPuzzle({ shape: 'square', k: 1, size: 0, difficulty: 'easy' }, null, 'own');
+
 function renderWinPick() { // change your mind about the next board without leaving the card
   segChoice($('winRungSeg'), Logic.RUNGS.map(r => [r.key, r.label]), settings.rung,
     v => { settings.rung = v; saveSettings(); renderPickers(); renderWinPick(); prefetch(); });

@@ -190,6 +190,18 @@ Two screens exist, never both at once.
 (four rungs plus board type with Random as default), Let me pick (every raw dial, Blank
 included), and a gear for settings. A Resume button appears when a puzzle is in progress.
 
+**How to play** — the last button on the menu, "Haven't caused a Hoopla before?". It covers
+the controls first, because those were the one thing the game explained nowhere: the rules
+are printed under every board and the rule reminders teach them in play, but nothing said
+that a square cycles empty → X → hoop. Then the three rules, each on a hand-built 3×3, and
+what Hint, Check and Give up cost. The board screen carries a one-line version of the
+controls too, for the majority who will never open a tutorial.
+
+The example boards are written out by hand rather than generated — the generator starts at
+6×6, and an example wants to be small enough to take in at a glance — but they are drawn
+with the game's own `drawHoop`, so a hoop there looks like a hoop in play. Each one obeys
+every rule, not just the one it illustrates.
+
 The gear appears on every screen and goes straight to settings. The gear again, or Back,
 returns to exactly where it was pressed — a particular picker view, or the board mid-puzzle
 with the clock picked up where it left off, since opening settings stops it.

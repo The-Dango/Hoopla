@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Hoopla</title>
-<meta name="build" content="0.7.0 · 2026-09-20">
+<meta name="build" content="0.8.0 · 2026-09-20">
 <meta name="description" content="A logic puzzle game in the family of Sudoku, Star Battle and Queens. Drop hoops so every region, row and column holds the right number, and no two hoops ever touch.">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
@@ -73,6 +73,21 @@ button.primary.big small { color: rgba(255,255,255,.75); }
 fieldset { border: 0; padding: 0; margin: 0; }
 legend { font-weight: 600; margin-bottom: 8px; padding: 0; }
 .rules { color: var(--muted); margin: 0; font-size: .92rem; }
+/* ---- how to play ---- */
+.learn { display: flex; flex-direction: column; gap: 8px; }
+.learn h3 { margin: 0; font-size: 1rem; font-weight: 800; }
+.learn p { margin: 0; font-size: .92rem; }
+.learn p.sub { color: var(--muted); font-size: .86rem; }
+.learn + .learn { border-top: 1.5px solid var(--thin); padding-top: 14px; }
+.cycle { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.cycle figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.cycle figcaption, .egrow figcaption { font-size: .78rem; color: var(--muted); text-align: center; }
+.cycle .arrow { color: var(--muted); font-size: .95rem; padding: 0 2px; margin-bottom: 14px; }
+.egrow { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
+.egrow figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 5px; }
+.learn svg { display: block; border-radius: 6px; }
+.costs { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0; font-size: .9rem; }
+.costs dt { font-weight: 700; } .costs dd { margin: 0; color: var(--muted); }
 .buildstamp { color: var(--muted); margin: 0; font-size: .75rem; text-align: center; opacity: .7; }
 label.opt { display: flex; gap: 10px; align-items: center; cursor: pointer; min-height: 40px; }
 label.opt input { width: 20px; height: 20px; accent-color: var(--ink); }
@@ -175,6 +190,7 @@ details.dev summary { cursor: pointer; font-weight: 600; min-height: 32px; }
     <button class="primary big" id="menuDaily"><span>Daily puzzle</span><small id="dailySub"></small></button>
     <button class="big" id="menuPick"><span>Pick for me</span><small>Choose how hard, we'll do the rest</small></button>
     <button class="big" id="menuOwn"><span>Let me pick</span><small>Every option, your way</small></button>
+    <button class="big" id="menuLearn"><span>Haven't caused a Hoopla before?</span><small>The rules and the controls, in a minute</small></button>
     <p class="rules" id="menuNote"></p>
   </div>
 
@@ -192,6 +208,50 @@ details.dev summary { cursor: pointer; font-weight: 600; min-height: 32px; }
     <fieldset><legend>Size</legend><div class="seg" id="sizeSeg"></div></fieldset>
     <fieldset><legend>Difficulty</legend><div class="seg" id="diffSeg"></div></fieldset>
     <div class="rowbtns"><button class="primary" id="ownStart">Start</button><button id="ownBack">Back</button></div>
+  </div>
+
+  <div class="view card2" id="viewLearn" hidden>
+    <h2>How to play</h2>
+
+    <section class="learn">
+      <h3>Placing things</h3>
+      <p>Tap a square to cycle it. An <strong>X</strong> is your note that a hoop can't go
+         there; it does nothing to the puzzle but keep you straight.</p>
+      <div class="cycle" id="learnCycle"></div>
+      <p class="sub">Drag across empty squares to X out a run of them at once. On a mouse,
+         right-click puts a hoop down directly.</p>
+    </section>
+
+    <section class="learn">
+      <h3>Every colour holds the same number</h3>
+      <p>Usually one hoop, sometimes two. The chip at the top of the board tells you which.</p>
+      <div class="egrow"><figure id="learnRegion"></figure></div>
+    </section>
+
+    <section class="learn">
+      <h3>The edge numbers count that row and column</h3>
+      <p>Each one says how many hoops belong in its line. They show on all four sides, so you
+         can read them from wherever you are looking.</p>
+      <div class="egrow"><figure id="learnLine"></figure></div>
+    </section>
+
+    <section class="learn">
+      <h3>Hoops never touch</h3>
+      <p>Not side by side, not corner to corner. This is the rule that does most of the work.</p>
+      <div class="egrow"><figure id="learnBad"></figure><figure id="learnGood"></figure></div>
+    </section>
+
+    <section class="learn">
+      <h3>When you're stuck</h3>
+      <dl class="costs">
+        <dt>Check</dt><dd>Free. Says whether everything so far is right, never what's wrong.</dd>
+        <dt>Hint</dt><dd>Finds the simplest next step and explains why. Adds time to your score.</dd>
+        <dt>Give up</dt><dd>Leave the board to come back to, or see how it fits together.</dd>
+      </dl>
+      <p class="sub">Every puzzle has exactly one solution, and it never needs a guess.</p>
+    </section>
+
+    <div class="rowbtns"><button class="primary" id="learnStart">Play an easy one</button><button id="learnBack">Back</button></div>
   </div>
 
   <div class="view card2" id="viewSettings" hidden>
@@ -247,6 +307,7 @@ details.dev summary { cursor: pointer; font-weight: 600; min-height: 32px; }
   <div class="bar" id="hintBar" hidden><div class="bartext"><p id="hintText"></p><p class="barnote" id="barNote"></p></div><div class="barbtns" id="barBtns"></div></div>
   <p class="note" id="note"></p>
   <p class="help" id="rules"></p>
+  <p class="help" id="controls">Tap a square once for an X, twice for a hoop. Drag to X out a run.</p>
   <p class="help" id="scoring"></p>
   <button class="codechip" id="gameCode" title="Copy this puzzle's code"></button>
 </div>

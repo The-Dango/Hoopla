@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Hoopla</title>
-<meta name="build" content="0.7.0 · 2026-09-20">
+<meta name="build" content="0.8.0 · 2026-09-20">
 <meta name="description" content="A logic puzzle game in the family of Sudoku, Star Battle and Queens. Drop hoops so every region, row and column holds the right number, and no two hoops ever touch.">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
@@ -73,6 +73,21 @@ button.primary.big small { color: rgba(255,255,255,.75); }
 fieldset { border: 0; padding: 0; margin: 0; }
 legend { font-weight: 600; margin-bottom: 8px; padding: 0; }
 .rules { color: var(--muted); margin: 0; font-size: .92rem; }
+/* ---- how to play ---- */
+.learn { display: flex; flex-direction: column; gap: 8px; }
+.learn h3 { margin: 0; font-size: 1rem; font-weight: 800; }
+.learn p { margin: 0; font-size: .92rem; }
+.learn p.sub { color: var(--muted); font-size: .86rem; }
+.learn + .learn { border-top: 1.5px solid var(--thin); padding-top: 14px; }
+.cycle { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.cycle figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.cycle figcaption, .egrow figcaption { font-size: .78rem; color: var(--muted); text-align: center; }
+.cycle .arrow { color: var(--muted); font-size: .95rem; padding: 0 2px; margin-bottom: 14px; }
+.egrow { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
+.egrow figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 5px; }
+.learn svg { display: block; border-radius: 6px; }
+.costs { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0; font-size: .9rem; }
+.costs dt { font-weight: 700; } .costs dd { margin: 0; color: var(--muted); }
 .buildstamp { color: var(--muted); margin: 0; font-size: .75rem; text-align: center; opacity: .7; }
 label.opt { display: flex; gap: 10px; align-items: center; cursor: pointer; min-height: 40px; }
 label.opt input { width: 20px; height: 20px; accent-color: var(--ink); }
@@ -175,6 +190,7 @@ details.dev summary { cursor: pointer; font-weight: 600; min-height: 32px; }
     <button class="primary big" id="menuDaily"><span>Daily puzzle</span><small id="dailySub"></small></button>
     <button class="big" id="menuPick"><span>Pick for me</span><small>Choose how hard, we'll do the rest</small></button>
     <button class="big" id="menuOwn"><span>Let me pick</span><small>Every option, your way</small></button>
+    <button class="big" id="menuLearn"><span>Haven't caused a Hoopla before?</span><small>The rules and the controls, in a minute</small></button>
     <p class="rules" id="menuNote"></p>
   </div>
 
@@ -192,6 +208,50 @@ details.dev summary { cursor: pointer; font-weight: 600; min-height: 32px; }
     <fieldset><legend>Size</legend><div class="seg" id="sizeSeg"></div></fieldset>
     <fieldset><legend>Difficulty</legend><div class="seg" id="diffSeg"></div></fieldset>
     <div class="rowbtns"><button class="primary" id="ownStart">Start</button><button id="ownBack">Back</button></div>
+  </div>
+
+  <div class="view card2" id="viewLearn" hidden>
+    <h2>How to play</h2>
+
+    <section class="learn">
+      <h3>Placing things</h3>
+      <p>Tap a square to cycle it. An <strong>X</strong> is your note that a hoop can't go
+         there; it does nothing to the puzzle but keep you straight.</p>
+      <div class="cycle" id="learnCycle"></div>
+      <p class="sub">Drag across empty squares to X out a run of them at once. On a mouse,
+         right-click puts a hoop down directly.</p>
+    </section>
+
+    <section class="learn">
+      <h3>Every colour holds the same number</h3>
+      <p>Usually one hoop, sometimes two. The chip at the top of the board tells you which.</p>
+      <div class="egrow"><figure id="learnRegion"></figure></div>
+    </section>
+
+    <section class="learn">
+      <h3>The edge numbers count that row and column</h3>
+      <p>Each one says how many hoops belong in its line. They show on all four sides, so you
+         can read them from wherever you are looking.</p>
+      <div class="egrow"><figure id="learnLine"></figure></div>
+    </section>
+
+    <section class="learn">
+      <h3>Hoops never touch</h3>
+      <p>Not side by side, not corner to corner. This is the rule that does most of the work.</p>
+      <div class="egrow"><figure id="learnBad"></figure><figure id="learnGood"></figure></div>
+    </section>
+
+    <section class="learn">
+      <h3>When you're stuck</h3>
+      <dl class="costs">
+        <dt>Check</dt><dd>Free. Says whether everything so far is right, never what's wrong.</dd>
+        <dt>Hint</dt><dd>Finds the simplest next step and explains why. Adds time to your score.</dd>
+        <dt>Give up</dt><dd>Leave the board to come back to, or see how it fits together.</dd>
+      </dl>
+      <p class="sub">Every puzzle has exactly one solution, and it never needs a guess.</p>
+    </section>
+
+    <div class="rowbtns"><button class="primary" id="learnStart">Play an easy one</button><button id="learnBack">Back</button></div>
   </div>
 
   <div class="view card2" id="viewSettings" hidden>
@@ -247,6 +307,7 @@ details.dev summary { cursor: pointer; font-weight: 600; min-height: 32px; }
   <div class="bar" id="hintBar" hidden><div class="bartext"><p id="hintText"></p><p class="barnote" id="barNote"></p></div><div class="barbtns" id="barBtns"></div></div>
   <p class="note" id="note"></p>
   <p class="help" id="rules"></p>
+  <p class="help" id="controls">Tap a square once for an X, twice for a hoop. Drag to X out a run.</p>
   <p class="help" id="scoring"></p>
   <button class="codechip" id="gameCode" title="Copy this puzzle's code"></button>
 </div>
@@ -875,7 +936,7 @@ function showPicker(view = 'menu') {
   if (view !== 'settings') settingsFrom = null;
   pickerView = view;
   $('game').hidden = true; $('picker').hidden = false;
-  for (const [id, key] of [['viewMenu','menu'],['viewPick','pick'],['viewOwn','own'],['viewSettings','settings']]) $(id).hidden = key !== view;
+  for (const [id, key] of [['viewMenu','menu'],['viewPick','pick'],['viewOwn','own'],['viewLearn','learn'],['viewSettings','settings']]) $(id).hidden = key !== view;
   if (view === 'menu') renderMenu();
   prefetch();
 }
@@ -941,6 +1002,78 @@ function renderMenu() {
   if (saved) $('resumeInfo').textContent = `${saved.P.daily ? 'Daily' : cap(saved.P.difficulty)} board, paused at ${fmt(saved.elapsed)}`;
   $('menuNote').textContent = 'Everyone gets the same daily board. It changes at midnight New York time.';
 }
+// ---------- how to play ----------
+// Small hand-built boards rather than generated ones: the generator starts at
+// 6x6, and an example wants to be small enough to take in at a glance. They
+// reuse drawHoop and drawX so a hoop here looks like a hoop in play.
+const MC = 34; // cell size for the examples
+function miniBoard(spec) {
+  const { W, H, region = null, marks = {}, rowT = null, colT = null, bad = [] } = spec;
+  const pad = (rowT || colT) ? 18 : 4;
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('viewBox', `0 0 ${pad * 2 + W * MC} ${pad * 2 + H * MC}`);
+  svg.setAttribute('width', pad * 2 + W * MC);
+  svg.setAttribute('height', pad * 2 + H * MC);
+  svg.setAttribute('aria-hidden', 'true');
+  const cells = el('g', {}, svg), grid = el('g', {}, svg), mk = el('g', {}, svg), clue = el('g', {}, svg);
+  let thin = '', thick = '';
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const c = y * W + x, X = pad + x * MC, Y = pad + y * MC;
+    el('rect', { x: X, y: Y, width: MC, height: MC,
+      fill: region ? `var(--r${region[c]})` : 'var(--panel)' }, cells);
+    const g = region ? region[c] : 0;
+    const rOf = (xx, yy) => (xx < 0 || yy < 0 || xx >= W || yy >= H) ? -2 : (region ? region[yy * W + xx] : 0);
+    [[rOf(x + 1, y), `M${X + MC} ${Y}v${MC}`], [rOf(x, y + 1), `M${X} ${Y + MC}h${MC}`],
+     [rOf(x - 1, y), `M${X} ${Y}v${MC}`], [rOf(x, y - 1), `M${X} ${Y}h${MC}`]]
+      .forEach(([o, d], i) => { if (o === g) { if (i < 2) thin += d; } else if (i < 2 || o === -2) thick += d; });
+  }
+  el('path', { d: thin, stroke: 'var(--thin)', 'stroke-width': 1, fill: 'none' }, grid);
+  el('path', { d: thick, stroke: 'var(--line)', 'stroke-width': 2.8, fill: 'none', 'stroke-linecap': 'square' }, grid);
+  for (const k in marks) {
+    const c = +k, X = pad + (c % W) * MC + MC / 2, Y = pad + ((c / W) | 0) * MC + MC / 2;
+    if (marks[c] === 'x') drawX(mk, X, Y, .45);
+    else {
+      // drawHoop sizes itself for a 40px board cell; these are smaller.
+      const g = drawHoop(mk, X, Y, bad.includes(c) ? 'wrong' : 'normal');
+      g.setAttribute('transform', `scale(${MC / 46})`);
+    }
+  }
+  const num = (t, X, Y) => el('text', { x: X, y: Y, 'text-anchor': 'middle', 'dominant-baseline': 'central',
+    'font-size': 12, 'font-weight': 700, fill: 'var(--muted)' }, clue).textContent = t;
+  if (rowT) rowT.forEach((t, y) => { num(t, pad / 2, pad + y * MC + MC / 2); num(t, pad * 1.5 + W * MC, pad + y * MC + MC / 2); });
+  if (colT) colT.forEach((t, x) => { num(t, pad + x * MC + MC / 2, pad / 2); num(t, pad + x * MC + MC / 2, pad * 1.5 + H * MC); });
+  return svg;
+}
+function renderLearn() {
+  const put = (id, node, caption) => {
+    const f = $(id); f.innerHTML = ''; f.appendChild(node);
+    if (caption) { const c = document.createElement('figcaption'); c.textContent = caption; f.appendChild(c); }
+  };
+  // One square, through its three states.
+  const cyc = $('learnCycle'); cyc.innerHTML = '';
+  [['Empty', {}], ['Tap once', { 0: 'x' }], ['Tap again', { 0: 'hoop' }], ['And again', {}]]
+    .forEach(([label, marks], i) => {
+      if (i) { const a = document.createElement('span'); a.className = 'arrow'; a.textContent = '\u2192'; cyc.appendChild(a); }
+      const f = document.createElement('figure');
+      f.appendChild(miniBoard({ W: 1, H: 1, marks }));
+      const c = document.createElement('figcaption'); c.textContent = label; f.appendChild(c);
+      cyc.appendChild(f);
+    });
+  // Three colours, one hoop in each, the rest ruled out.
+  put('learnRegion', miniBoard({ W: 3, H: 3,
+    region: [0, 1, 1, 0, 2, 1, 2, 2, 2],
+    marks: { 0: 'hoop', 2: 'hoop', 7: 'hoop' } }), 'One hoop in every colour');
+  // Edge numbers.
+  put('learnLine', miniBoard({ W: 3, H: 3, rowT: [1, 0, 1], colT: [1, 0, 1],
+    marks: { 0: 'hoop', 8: 'hoop' } }), 'The 0 row and column stay empty');
+  // Touching, and not.
+  put('learnBad', miniBoard({ W: 3, H: 3, marks: { 0: 'hoop', 4: 'hoop' }, bad: [0, 4] }), 'Touching at the corner');
+  put('learnGood', miniBoard({ W: 3, H: 3, marks: { 0: 'hoop', 2: 'hoop' } }), 'A square apart is fine');
+}
+$('menuLearn').onclick = () => { renderLearn(); showPicker('learn'); };
+$('learnBack').onclick = () => showPicker('menu');
+$('learnStart').onclick = () => startPuzzle({ shape: 'square', k: 1, size: 0, difficulty: 'easy' }, null, 'own');
+
 function renderWinPick() { // change your mind about the next board without leaving the card
   segChoice($('winRungSeg'), Logic.RUNGS.map(r => [r.key, r.label]), settings.rung,
     v => { settings.rung = v; saveSettings(); renderPickers(); renderWinPick(); prefetch(); });
