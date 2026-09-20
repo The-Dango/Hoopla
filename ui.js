@@ -209,8 +209,8 @@ function tutDone() {
     : on ? 'You can switch the other helpers on any time under the gear.'
          : 'The helpers are all under the gear if you change your mind.'}</dd>`;
   $('winPick').hidden = true;
-  $('winMenu').hidden = false;
-  $('winNew').textContent = 'Play a real one';
+  $('winMenu').hidden = true;
+  $('winNew').textContent = 'Go cause a Hoopla';
   $('win').classList.add('show');
 }
 function startTutorial() {
@@ -381,7 +381,7 @@ $('menuDaily').onclick = () => { const o = Logic.dailyOptions(); startPuzzle({ .
 $('pickStart').onclick = () => startPuzzle(pickOpts(), optsKey({ rung: settings.rung, pickShape: settings.pickShape }), 'pick');
 $('ownStart').onclick = () => startPuzzle(ownOpts(), optsKey(ownOpts()), 'own');
 $('winNew').onclick = () => {
-  if (tutorial) return startPuzzle({ shape: 'square', k: 1, size: 0, difficulty: 'easy' }, null, 'own');
+  if (tutorial) return showPicker('menu');
   if (lastOpts && lastOpts.source === 'daily') return showPicker('menu');
   if (lastOpts && lastOpts.source === 'pick') return startPuzzle(pickOpts(), optsKey({ rung: settings.rung, pickShape: settings.pickShape }), 'pick');
   return startPuzzle(ownOpts(), optsKey(ownOpts()), 'own');
@@ -791,11 +791,16 @@ function ruleTrip(c, before) {
   return null;
 }
 function offerHelper(c, before) {
-  if (settings.quiet || solved || modalOpen() || tutorial) return;
+  if (settings.quiet || solved || modalOpen()) return;
   const t = ruleTrip(c, before); if (!t) return;
   const all = trips(), seen = (all[t.kind] || 0) + 1;
-  all[t.kind] = seen; saveTrips(all);
-  if (seen % 3 !== 1) return;  // 1st, 4th, 7th, ... of that rule
+  // Tutorial breaks do not count towards the real game's tally, and there the
+  // reminder comes back every single time: the point of the tutorial is to
+  // learn the rule, not to be left in peace while playing.
+  if (!tutorial) {
+    all[t.kind] = seen; saveTrips(all);
+    if (seen % 3 !== 1) return;  // 1st, 4th, 7th, ... of that rule
+  }
   // Let the misplaced hoop land and turn red before covering the board.
   setTimeout(() => {
     if (!P || solved || modalOpen()) return;

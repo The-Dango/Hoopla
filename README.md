@@ -221,6 +221,11 @@ line in the gear. Accepting switches it on for good; declining leaves it off and
 Stage 1 and stage 5 wait on the board, the rest on a button, so a stray tap cannot skip a
 lesson.
 
+Declining is not the end of it. The ordinary rule reminders run inside the tutorial as well,
+and there they appear **every** time the rule is broken rather than every third: someone who
+said no and then breaks that rule is exactly who the lesson is for. Those breaks do not count
+towards the real game's tally, so the reminders a player meets later are unaffected.
+
 The example boards are written out by hand rather than generated — the generator starts at
 6×6, and an example wants to be small enough to take in at a glance — but they are drawn
 with the game's own `drawHoop`, so a hoop there looks like a hoop in play. Each one obeys
