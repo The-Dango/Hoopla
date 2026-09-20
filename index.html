@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hoopla</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
+<style>
+:root {
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  --bg: #E4E9EF; --panel: #F4F6F9; --ink: #1C2541; --muted: #5B6480; --line: #1C2541;
+  --thin: rgba(28,37,65,.22); --gold: #D4951A; --bad: #C8323C; --ok: #2F7D5B; --dot: #1C2541; --startdot: rgba(28,37,65,.2); --o: #2FA8E0; --chip: rgba(28,37,65,.07); --chipedge: rgba(28,37,65,.14); --chipon: #5B6480;
+  --r0:#F4C4B3; --r1:#F1DE9C; --r2:#C5E1AE; --r3:#A7D6D4; --r4:#B8C7EE; --r5:#D5C0EC; --r6:#F0BAD2; --r7:#DCD4C1; --r8:#BCDFF2; --r9:#E9C39C;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #141A26; --panel: #1C2433; --ink: #E8ECF4; --muted: #9AA3BA; --line: #0B0F17;
+  --thin: rgba(0,0,0,.35); --gold: #F2B84B; --bad: #FF6B72; --ok: #6FD3A2; --dot: #0E1320; --startdot: rgba(10,14,22,.38); --o: #3FB6EC; --chip: rgba(255,255,255,.07); --chipedge: rgba(255,255,255,.14); --chipon: #8B95AF;
+  --r0:#8A5A4B; --r1:#857535; --r2:#56753F; --r3:#3E7270; --r4:#4A5B8C; --r5:#6B528A; --r6:#8A4D68; --r7:#6E6754; --r8:#3F6D86; --r9:#8A6440; } }
+:root[data-theme="dark"] {
+  --bg: #141A26; --panel: #1C2433; --ink: #E8ECF4; --muted: #9AA3BA; --line: #0B0F17;
+  --thin: rgba(0,0,0,.35); --gold: #F2B84B; --bad: #FF6B72; --ok: #6FD3A2; --dot: #0E1320; --startdot: rgba(10,14,22,.38); --o: #3FB6EC; --chip: rgba(255,255,255,.07); --chipedge: rgba(255,255,255,.14); --chipon: #8B95AF;
+  --r0:#8A5A4B; --r1:#857535; --r2:#56753F; --r3:#3E7270; --r4:#4A5B8C; --r5:#6B528A; --r6:#8A4D68; --r7:#6E6754; --r8:#3F6D86; --r9:#8A6440; }
+html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+*, *::before, *::after { box-sizing: inherit; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--bg); color: var(--ink);
+  font-family: "Bricolage Grotesque", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; font-size: 16px; line-height: 1.45; }
+h1 { font-size: 1.7rem; font-weight: 800; letter-spacing: -0.02em; margin: 0; line-height: 1.1; }
+h2 { font-size: 1.2rem; font-weight: 800; margin: 0; }
+button { font: inherit; color: var(--ink); background: var(--panel); border: 1.5px solid var(--thin); border-radius: 12px;
+  padding: 10px 16px; cursor: pointer; min-height: 44px; }
+button:hover { border-color: var(--ink); }
+button:focus-visible, input:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+button.primary { background: var(--ink); color: var(--bg); border-color: var(--ink); font-weight: 600; }
+button.big { font-size: 1.05rem; padding: 16px 18px; text-align: left; width: 100%; display: flex; flex-direction: column; gap: 2px; }
+button.big small { font-weight: 400; color: var(--muted); font-size: .88rem; }
+button.primary.big small { color: rgba(255,255,255,.75); }
+.screen[hidden] { display: none; }
+
+/* ---- picker ---- */
+#picker { max-width: 520px; margin: 0 auto; padding: 28px 16px 48px; display: flex; flex-direction: column; gap: 18px; }
+.pickhead { display: flex; align-items: center; gap: 12px; }
+.pickhead p { margin: 0; color: var(--muted); font-size: .92rem; }
+.pickhead .gear { margin-left: auto; min-width: 44px; padding: 10px; }
+.card2 { background: var(--panel); border-radius: 18px; padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+.view[hidden] { display: none; }
+.view { display: flex; flex-direction: column; gap: 14px; }
+.seg { display: flex; flex-wrap: wrap; gap: 8px; }
+.seg button { padding: 9px 14px; border-radius: 999px; background: var(--chip); border-color: var(--chipedge); color: var(--muted); font-weight: 500; }
+.seg button:hover { border-color: var(--muted); color: var(--ink); }
+.seg button[aria-pressed="true"] { background: var(--chipon); color: var(--panel); border-color: var(--chipon); font-weight: 600; }
+.rowbtns button { font-weight: 600; letter-spacing: .01em; padding: 12px 22px; }
+.rowbtns button:not(.primary) { border-width: 2px; border-color: var(--ink); }
+fieldset { border: 0; padding: 0; margin: 0; }
+legend { font-weight: 600; margin-bottom: 8px; padding: 0; }
+.rules { color: var(--muted); margin: 0; font-size: .92rem; }
+label.opt { display: flex; gap: 10px; align-items: center; cursor: pointer; min-height: 40px; }
+label.opt input { width: 20px; height: 20px; accent-color: var(--ink); }
+.rowbtns { display: flex; gap: 8px; flex-wrap: wrap; }
+.codebox { display: flex; flex-direction: column; gap: 6px; }
+.codebox span { display: flex; gap: 6px; }
+.codebox input { font: inherit; font-size: .9rem; min-width: 0; flex: 1; padding: 10px; border-radius: 10px; border: 1.5px solid var(--thin); background: var(--bg); color: var(--ink); }
+details.dev { font-size: .85rem; color: var(--muted); }
+details.dev summary { cursor: pointer; font-weight: 600; min-height: 32px; }
+.dev dl { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; margin: 10px 0 0; }
+.dev dt { font-weight: 600; } .dev dd { margin: 0; overflow-wrap: anywhere; }
+
+/* ---- board ---- */
+#game { max-width: 660px; margin: 0 auto; padding: 18px 12px 40px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.gamehead { display: flex; align-items: center; gap: 12px; width: 100%; }
+.gamehead .title { font-weight: 700; }
+.gamehead .timer { margin-left: auto; font-variant-numeric: tabular-nums; font-weight: 700; font-size: 1.3rem; }
+.boardbox { position: relative; width: 100%; }
+#board { width: 100%; height: auto; display: block; margin: 0 auto; touch-action: none; user-select: none; -webkit-user-select: none; }
+#board .cell { cursor: pointer; }
+.toolbar { display: flex; gap: 8px; width: 100%; flex-wrap: wrap; }
+.toolbar button { flex: 1 1 0; min-width: 84px; padding: 10px 8px; }
+.counts { color: var(--muted); font-size: .92rem; width: 100%; }
+.note { margin: 0; width: 100%; font-weight: 600; font-size: .95rem; }
+.help { font-size: .86rem; color: var(--muted); margin: 0; }
+.bar { width: 100%; background: var(--panel); border: 2px solid var(--gold); border-radius: 14px; padding: 12px 14px;
+  display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.bar[hidden] { display: none; }
+.bar.bad { border-color: var(--bad); } .bar.good { border-color: var(--ok); }
+.bartext { flex: 1 1 240px; } .bar p { margin: 0; }
+.barnote { font-size: .85rem; color: var(--muted); margin-top: 4px !important; } .barnote:empty { display: none; }
+.barbtns { display: flex; gap: 8px; flex-wrap: wrap; }
+.overlay { position: fixed; inset: 0; z-index: 30; display: none; align-items: center; justify-content: center;
+  padding: 16px; overflow-y: auto; overscroll-behavior: contain; background: rgba(10,14,22,.35); }
+.overlay.show { display: flex; }
+.card { background: var(--panel); border-radius: 16px; padding: 18px 22px; text-align: center; margin: auto;
+  box-shadow: 0 10px 40px rgba(0,0,0,.25); border: 2px solid var(--gold); width: min(420px, 100%); max-height: 100%; overflow-y: auto; }
+.card h2 { margin: 0 0 6px; font-size: 1.5rem; }
+.card .rowbtns { justify-content: center; }
+.again { display: flex; flex-direction: column; gap: 8px; margin: 0; }
+.again hr, .card hr { border: 0; border-top: 1.5px solid var(--thin); margin: 12px 0; width: 100%; }
+.again .seg { justify-content: center; }
+.again .seg button { padding: 6px 11px; min-height: 36px; font-size: .9rem; }
+.score { display: grid; grid-template-columns: auto auto; gap: 2px 18px; margin: 4px 0 14px; text-align: left; font-variant-numeric: tabular-nums; }
+.score dt { color: var(--muted); } .score dd { margin: 0; text-align: right; }
+.score .note { grid-column: 1 / -1; font-size: .85rem; color: var(--muted); text-align: center; font-weight: 400; }
+.score .total { font-weight: 800; color: var(--ink); font-size: 1.15rem; padding-top: 4px; border-top: 1.5px solid var(--thin); }
+.busy { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; text-align: center;
+  font-weight: 600; color: var(--muted); padding: 10px; }
+.busy.show { display: flex; }
+.star-win { animation: pop .5s ease-out both; transform-box: fill-box; transform-origin: center; }
+@keyframes pop { 0% { transform: scale(1); } 45% { transform: scale(1.35); } 100% { transform: scale(1); } }
+.hint-hl { animation: glow 1.2s ease-in-out infinite alternate; }
+@keyframes glow { from { opacity: .55; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .star-win, .hint-hl { animation: none; } }
+@media (min-width: 880px) { #game { padding-top: 28px; } .toolbar button { flex: 0 1 auto; min-width: 110px; } }
+</style>
+</head>
+<body>
+<div class="screen" id="picker">
+  <div class="pickhead">
+    <h1>Hoopla</h1>
+    <button class="gear" id="gearBtn" aria-label="Settings" title="Settings">⚙</button>
+  </div>
+
+  <div class="view" id="viewMenu">
+    <button class="primary big" id="resumeBtn" hidden><span>Resume puzzle</span><small id="resumeInfo"></small></button>
+    <button class="primary big" id="menuDaily"><span>Daily puzzle</span><small id="dailySub"></small></button>
+    <button class="big" id="menuPick"><span>Pick for me</span><small>Choose how hard, we'll do the rest</small></button>
+    <button class="big" id="menuOwn"><span>Let me pick</span><small>Every option, your way</small></button>
+    <p class="rules" id="menuNote"></p>
+  </div>
+
+  <div class="view card2" id="viewPick" hidden>
+    <h2>Pick for me</h2>
+    <fieldset><legend>How do you want it?</legend><div class="seg" id="rungSeg"></div></fieldset>
+    <fieldset><legend>Board</legend><div class="seg" id="pickShapeSeg"></div></fieldset>
+    <div class="rowbtns"><button class="primary" id="pickStart">Start</button><button id="pickBack">Back</button></div>
+  </div>
+
+  <div class="view card2" id="viewOwn" hidden>
+    <h2>Let me pick</h2>
+    <fieldset><legend>Board shape</legend><div class="seg" id="shapeSeg"></div></fieldset>
+    <fieldset id="kField"><legend>Hoops per region</legend><div class="seg" id="kSeg"></div></fieldset>
+    <fieldset><legend>Size</legend><div class="seg" id="sizeSeg"></div></fieldset>
+    <fieldset><legend>Difficulty</legend><div class="seg" id="diffSeg"></div></fieldset>
+    <div class="rowbtns"><button class="primary" id="ownStart">Start</button><button id="ownBack">Back</button></div>
+  </div>
+
+  <div class="view card2" id="viewSettings" hidden>
+    <h2>Settings</h2>
+    <label class="opt"><input type="checkbox" id="optAuto"> Blank out around stars</label>
+    <label class="opt"><input type="checkbox" id="optFill" checked> Blank out finished rows, columns and regions</label>
+    <label class="opt"><input type="checkbox" id="optErr" checked> Show rule breaks</label>
+    <details class="dev"><summary>Developer info</summary>
+      <dl id="devStats"></dl>
+      <label class="codebox" style="margin-top:10px">Play a puzzle code<span><input id="codeIn" placeholder="SQ1SE-q1ongt" spellcheck="false"><button id="codeGo">Go</button></span></label>
+    </details>
+    <div class="rowbtns"><button id="setBack">Back</button></div>
+  </div>
+</div>
+
+<div class="screen" id="game" hidden>
+  <div class="gamehead">
+    <span class="title" id="gameTitle"></span>
+    <span class="timer" id="timer">0:00</span>
+  </div>
+  <div class="boardbox">
+    <svg id="board" role="application" aria-label="Puzzle board"></svg>
+    <div class="busy" id="busy">Building a puzzle…</div>
+    <div class="overlay" id="win"><div class="card"><h2 id="winTitle">Solved</h2><dl class="score" id="winScore"></dl>
+      <div class="again" id="winPick" hidden>
+        <hr>
+        <div class="seg" id="winRungSeg"></div>
+        <hr>
+        <div class="seg" id="winShapeSeg"></div>
+      </div>
+      <hr>
+      <div class="rowbtns"><button class="primary" id="winNew">Another one</button><button id="winMenu">Menu</button></div></div></div>
+  </div>
+  <div class="toolbar">
+    <button id="undo">Undo</button>
+    <button id="clear">Clear</button>
+    <button id="hint">Hint</button>
+    <button id="check">Check</button>
+    <button id="quit">Give up</button>
+  </div>
+  <div class="counts" id="hintCount"></div>
+  <div class="bar" id="hintBar" hidden><div class="bartext"><p id="hintText"></p><p class="barnote" id="barNote"></p></div><div class="barbtns" id="barBtns"></div></div>
+  <p class="note" id="note"></p>
+  <p class="help" id="rules"></p>
+  <p class="help" id="scoring"></p>
+</div>
+<script src="engine.js"></script>
+<script src="logic.js"></script>
+<script src="ui.js"></script>
+<script>
+</script>
+</body>
+</html>

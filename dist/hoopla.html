@@ -1,0 +1,1136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hoopla</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
+<style>
+:root {
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  --bg: #E4E9EF; --panel: #F4F6F9; --ink: #1C2541; --muted: #5B6480; --line: #1C2541;
+  --thin: rgba(28,37,65,.22); --gold: #D4951A; --bad: #C8323C; --ok: #2F7D5B; --dot: #1C2541; --startdot: rgba(28,37,65,.2); --o: #2FA8E0; --chip: rgba(28,37,65,.07); --chipedge: rgba(28,37,65,.14); --chipon: #5B6480;
+  --r0:#F4C4B3; --r1:#F1DE9C; --r2:#C5E1AE; --r3:#A7D6D4; --r4:#B8C7EE; --r5:#D5C0EC; --r6:#F0BAD2; --r7:#DCD4C1; --r8:#BCDFF2; --r9:#E9C39C;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #141A26; --panel: #1C2433; --ink: #E8ECF4; --muted: #9AA3BA; --line: #0B0F17;
+  --thin: rgba(0,0,0,.35); --gold: #F2B84B; --bad: #FF6B72; --ok: #6FD3A2; --dot: #0E1320; --startdot: rgba(10,14,22,.38); --o: #3FB6EC; --chip: rgba(255,255,255,.07); --chipedge: rgba(255,255,255,.14); --chipon: #8B95AF;
+  --r0:#8A5A4B; --r1:#857535; --r2:#56753F; --r3:#3E7270; --r4:#4A5B8C; --r5:#6B528A; --r6:#8A4D68; --r7:#6E6754; --r8:#3F6D86; --r9:#8A6440; } }
+:root[data-theme="dark"] {
+  --bg: #141A26; --panel: #1C2433; --ink: #E8ECF4; --muted: #9AA3BA; --line: #0B0F17;
+  --thin: rgba(0,0,0,.35); --gold: #F2B84B; --bad: #FF6B72; --ok: #6FD3A2; --dot: #0E1320; --startdot: rgba(10,14,22,.38); --o: #3FB6EC; --chip: rgba(255,255,255,.07); --chipedge: rgba(255,255,255,.14); --chipon: #8B95AF;
+  --r0:#8A5A4B; --r1:#857535; --r2:#56753F; --r3:#3E7270; --r4:#4A5B8C; --r5:#6B528A; --r6:#8A4D68; --r7:#6E6754; --r8:#3F6D86; --r9:#8A6440; }
+html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+*, *::before, *::after { box-sizing: inherit; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--bg); color: var(--ink);
+  font-family: "Bricolage Grotesque", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; font-size: 16px; line-height: 1.45; }
+h1 { font-size: 1.7rem; font-weight: 800; letter-spacing: -0.02em; margin: 0; line-height: 1.1; }
+h2 { font-size: 1.2rem; font-weight: 800; margin: 0; }
+button { font: inherit; color: var(--ink); background: var(--panel); border: 1.5px solid var(--thin); border-radius: 12px;
+  padding: 10px 16px; cursor: pointer; min-height: 44px; }
+button:hover { border-color: var(--ink); }
+button:focus-visible, input:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+button.primary { background: var(--ink); color: var(--bg); border-color: var(--ink); font-weight: 600; }
+button.big { font-size: 1.05rem; padding: 16px 18px; text-align: left; width: 100%; display: flex; flex-direction: column; gap: 2px; }
+button.big small { font-weight: 400; color: var(--muted); font-size: .88rem; }
+button.primary.big small { color: rgba(255,255,255,.75); }
+.screen[hidden] { display: none; }
+
+/* ---- picker ---- */
+#picker { max-width: 520px; margin: 0 auto; padding: 28px 16px 48px; display: flex; flex-direction: column; gap: 18px; }
+.pickhead { display: flex; align-items: center; gap: 12px; }
+.pickhead p { margin: 0; color: var(--muted); font-size: .92rem; }
+.pickhead .gear { margin-left: auto; min-width: 44px; padding: 10px; }
+.card2 { background: var(--panel); border-radius: 18px; padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+.view[hidden] { display: none; }
+.view { display: flex; flex-direction: column; gap: 14px; }
+.seg { display: flex; flex-wrap: wrap; gap: 8px; }
+.seg button { padding: 9px 14px; border-radius: 999px; background: var(--chip); border-color: var(--chipedge); color: var(--muted); font-weight: 500; }
+.seg button:hover { border-color: var(--muted); color: var(--ink); }
+.seg button[aria-pressed="true"] { background: var(--chipon); color: var(--panel); border-color: var(--chipon); font-weight: 600; }
+.rowbtns button { font-weight: 600; letter-spacing: .01em; padding: 12px 22px; }
+.rowbtns button:not(.primary) { border-width: 2px; border-color: var(--ink); }
+fieldset { border: 0; padding: 0; margin: 0; }
+legend { font-weight: 600; margin-bottom: 8px; padding: 0; }
+.rules { color: var(--muted); margin: 0; font-size: .92rem; }
+label.opt { display: flex; gap: 10px; align-items: center; cursor: pointer; min-height: 40px; }
+label.opt input { width: 20px; height: 20px; accent-color: var(--ink); }
+.rowbtns { display: flex; gap: 8px; flex-wrap: wrap; }
+.codebox { display: flex; flex-direction: column; gap: 6px; }
+.codebox span { display: flex; gap: 6px; }
+.codebox input { font: inherit; font-size: .9rem; min-width: 0; flex: 1; padding: 10px; border-radius: 10px; border: 1.5px solid var(--thin); background: var(--bg); color: var(--ink); }
+details.dev { font-size: .85rem; color: var(--muted); }
+details.dev summary { cursor: pointer; font-weight: 600; min-height: 32px; }
+.dev dl { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; margin: 10px 0 0; }
+.dev dt { font-weight: 600; } .dev dd { margin: 0; overflow-wrap: anywhere; }
+
+/* ---- board ---- */
+#game { max-width: 660px; margin: 0 auto; padding: 18px 12px 40px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.gamehead { display: flex; align-items: center; gap: 12px; width: 100%; }
+.gamehead .title { font-weight: 700; }
+.gamehead .timer { margin-left: auto; font-variant-numeric: tabular-nums; font-weight: 700; font-size: 1.3rem; }
+.boardbox { position: relative; width: 100%; }
+#board { width: 100%; height: auto; display: block; margin: 0 auto; touch-action: none; user-select: none; -webkit-user-select: none; }
+#board .cell { cursor: pointer; }
+.toolbar { display: flex; gap: 8px; width: 100%; flex-wrap: wrap; }
+.toolbar button { flex: 1 1 0; min-width: 84px; padding: 10px 8px; }
+.counts { color: var(--muted); font-size: .92rem; width: 100%; }
+.note { margin: 0; width: 100%; font-weight: 600; font-size: .95rem; }
+.help { font-size: .86rem; color: var(--muted); margin: 0; }
+.bar { width: 100%; background: var(--panel); border: 2px solid var(--gold); border-radius: 14px; padding: 12px 14px;
+  display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.bar[hidden] { display: none; }
+.bar.bad { border-color: var(--bad); } .bar.good { border-color: var(--ok); }
+.bartext { flex: 1 1 240px; } .bar p { margin: 0; }
+.barnote { font-size: .85rem; color: var(--muted); margin-top: 4px !important; } .barnote:empty { display: none; }
+.barbtns { display: flex; gap: 8px; flex-wrap: wrap; }
+.overlay { position: fixed; inset: 0; z-index: 30; display: none; align-items: center; justify-content: center;
+  padding: 16px; overflow-y: auto; overscroll-behavior: contain; background: rgba(10,14,22,.35); }
+.overlay.show { display: flex; }
+.card { background: var(--panel); border-radius: 16px; padding: 18px 22px; text-align: center; margin: auto;
+  box-shadow: 0 10px 40px rgba(0,0,0,.25); border: 2px solid var(--gold); width: min(420px, 100%); max-height: 100%; overflow-y: auto; }
+.card h2 { margin: 0 0 6px; font-size: 1.5rem; }
+.card .rowbtns { justify-content: center; }
+.again { display: flex; flex-direction: column; gap: 8px; margin: 0; }
+.again hr, .card hr { border: 0; border-top: 1.5px solid var(--thin); margin: 12px 0; width: 100%; }
+.again .seg { justify-content: center; }
+.again .seg button { padding: 6px 11px; min-height: 36px; font-size: .9rem; }
+.score { display: grid; grid-template-columns: auto auto; gap: 2px 18px; margin: 4px 0 14px; text-align: left; font-variant-numeric: tabular-nums; }
+.score dt { color: var(--muted); } .score dd { margin: 0; text-align: right; }
+.score .note { grid-column: 1 / -1; font-size: .85rem; color: var(--muted); text-align: center; font-weight: 400; }
+.score .total { font-weight: 800; color: var(--ink); font-size: 1.15rem; padding-top: 4px; border-top: 1.5px solid var(--thin); }
+.busy { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; text-align: center;
+  font-weight: 600; color: var(--muted); padding: 10px; }
+.busy.show { display: flex; }
+.star-win { animation: pop .5s ease-out both; transform-box: fill-box; transform-origin: center; }
+@keyframes pop { 0% { transform: scale(1); } 45% { transform: scale(1.35); } 100% { transform: scale(1); } }
+.hint-hl { animation: glow 1.2s ease-in-out infinite alternate; }
+@keyframes glow { from { opacity: .55; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .star-win, .hint-hl { animation: none; } }
+@media (min-width: 880px) { #game { padding-top: 28px; } .toolbar button { flex: 0 1 auto; min-width: 110px; } }
+</style>
+</head>
+<body>
+<div class="screen" id="picker">
+  <div class="pickhead">
+    <h1>Hoopla</h1>
+    <button class="gear" id="gearBtn" aria-label="Settings" title="Settings">⚙</button>
+  </div>
+
+  <div class="view" id="viewMenu">
+    <button class="primary big" id="resumeBtn" hidden><span>Resume puzzle</span><small id="resumeInfo"></small></button>
+    <button class="primary big" id="menuDaily"><span>Daily puzzle</span><small id="dailySub"></small></button>
+    <button class="big" id="menuPick"><span>Pick for me</span><small>Choose how hard, we'll do the rest</small></button>
+    <button class="big" id="menuOwn"><span>Let me pick</span><small>Every option, your way</small></button>
+    <p class="rules" id="menuNote"></p>
+  </div>
+
+  <div class="view card2" id="viewPick" hidden>
+    <h2>Pick for me</h2>
+    <fieldset><legend>How do you want it?</legend><div class="seg" id="rungSeg"></div></fieldset>
+    <fieldset><legend>Board</legend><div class="seg" id="pickShapeSeg"></div></fieldset>
+    <div class="rowbtns"><button class="primary" id="pickStart">Start</button><button id="pickBack">Back</button></div>
+  </div>
+
+  <div class="view card2" id="viewOwn" hidden>
+    <h2>Let me pick</h2>
+    <fieldset><legend>Board shape</legend><div class="seg" id="shapeSeg"></div></fieldset>
+    <fieldset id="kField"><legend>Hoops per region</legend><div class="seg" id="kSeg"></div></fieldset>
+    <fieldset><legend>Size</legend><div class="seg" id="sizeSeg"></div></fieldset>
+    <fieldset><legend>Difficulty</legend><div class="seg" id="diffSeg"></div></fieldset>
+    <div class="rowbtns"><button class="primary" id="ownStart">Start</button><button id="ownBack">Back</button></div>
+  </div>
+
+  <div class="view card2" id="viewSettings" hidden>
+    <h2>Settings</h2>
+    <label class="opt"><input type="checkbox" id="optAuto"> Blank out around stars</label>
+    <label class="opt"><input type="checkbox" id="optFill" checked> Blank out finished rows, columns and regions</label>
+    <label class="opt"><input type="checkbox" id="optErr" checked> Show rule breaks</label>
+    <details class="dev"><summary>Developer info</summary>
+      <dl id="devStats"></dl>
+      <label class="codebox" style="margin-top:10px">Play a puzzle code<span><input id="codeIn" placeholder="SQ1SE-q1ongt" spellcheck="false"><button id="codeGo">Go</button></span></label>
+    </details>
+    <div class="rowbtns"><button id="setBack">Back</button></div>
+  </div>
+</div>
+
+<div class="screen" id="game" hidden>
+  <div class="gamehead">
+    <span class="title" id="gameTitle"></span>
+    <span class="timer" id="timer">0:00</span>
+  </div>
+  <div class="boardbox">
+    <svg id="board" role="application" aria-label="Puzzle board"></svg>
+    <div class="busy" id="busy">Building a puzzle…</div>
+    <div class="overlay" id="win"><div class="card"><h2 id="winTitle">Solved</h2><dl class="score" id="winScore"></dl>
+      <div class="again" id="winPick" hidden>
+        <hr>
+        <div class="seg" id="winRungSeg"></div>
+        <hr>
+        <div class="seg" id="winShapeSeg"></div>
+      </div>
+      <hr>
+      <div class="rowbtns"><button class="primary" id="winNew">Another one</button><button id="winMenu">Menu</button></div></div></div>
+  </div>
+  <div class="toolbar">
+    <button id="undo">Undo</button>
+    <button id="clear">Clear</button>
+    <button id="hint">Hint</button>
+    <button id="check">Check</button>
+    <button id="quit">Give up</button>
+  </div>
+  <div class="counts" id="hintCount"></div>
+  <div class="bar" id="hintBar" hidden><div class="bartext"><p id="hintText"></p><p class="barnote" id="barNote"></p></div><div class="barbtns" id="barBtns"></div></div>
+  <p class="note" id="note"></p>
+  <p class="help" id="rules"></p>
+  <p class="help" id="scoring"></p>
+</div>
+<script>
+// ===== Puzzle engine: shapes, generator, solver =====
+const Engine = (() => {
+  function rng(seed) { // mulberry32
+    let a = seed >>> 0;
+    return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+  }
+  function shuffle(arr, r) { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; }
+
+  // ---- shapes: return {W,H,mask} ----
+  function connected4(W, H, mask) {
+    const start = mask.indexOf(true); if (start < 0) return false;
+    const seen = new Uint8Array(W * H), st = [start]; seen[start] = 1; let n = 1;
+    while (st.length) { const c = st.pop(), x = c % W, y = (c / W) | 0;
+      for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) { const nx = x + dx, ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue; const nc = ny * W + nx;
+        if (mask[nc] && !seen[nc]) { seen[nc] = 1; n++; st.push(nc); } } }
+    return n === mask.filter(Boolean).length;
+  }
+  const Shapes = {
+    square(n) { return { W: n, H: n, mask: Array(n * n).fill(true) }; },
+    rectangle(n) { const H = Math.round(n * 0.65); return { W: n, H, mask: Array(n * H).fill(true) }; },
+    octagon(n) { // straight edges three cells long, corners cut on the diagonal
+      const c = Math.max(1, Math.round((n - 3) / 2)), mask = [];
+      for (let y = 0; y < n; y++) for (let x = 0; x < n; x++)
+        mask.push(x + y >= c && (n - 1 - x) + y >= c && x + (n - 1 - y) >= c && (n - 1 - x) + (n - 1 - y) >= c);
+      return { W: n, H: n, mask };
+    },
+    blank(n) { return Shapes.square(n); }, // plain grid, used with regions switched off
+    carved(n, r) { // a full grid with big blocked areas cut out of it, leaving corridors and bays
+      for (let t = 0; t < 80; t++) {
+        const W = n, H = n, mask = Array(W * H).fill(true), total = W * H;
+        const blobs = 2 + Math.floor(r() * 2), want = Math.round(total * (0.22 + r() * 0.1));
+        let removed = 0;
+        for (let i = 0; i < blobs && removed < want; i++) {
+          let x = Math.floor(r() * W), y = Math.floor(r() * H);
+          const size = Math.round(want / blobs);
+          for (let s = 0; s < size * 3 && removed < want; s++) {
+            const a2 = y * W + x, b2 = (H - 1 - y) * W + (W - 1 - x);
+            if (mask[a2]) { mask[a2] = false; removed++; }
+            if (mask[b2]) { mask[b2] = false; removed++; }
+            const d = ADJ4[Math.floor(r() * 4)]; const nx = x + d[0], ny = y + d[1];
+            if (nx < 0 || ny < 0 || nx >= W || ny >= H) break;
+            x = nx; y = ny;
+          }
+        }
+        const cells = mask.filter(Boolean).length;
+        if (cells >= total * 0.55 && connected4(W, H, mask)) return { W, H, mask };
+      }
+      return Shapes.square(n);
+    },
+  };
+  function punchHoles(W, H, mask, r) { // blocked cells scattered through the board, kept point-symmetric
+    const cells = mask.filter(Boolean).length, want = Math.max(2, Math.round(cells * 0.1));
+    for (let t = 0; t < 120; t++) {
+      const m = mask.slice(); let done = 0;
+      for (let i = 0; i < want * 6 && done < want; i++) {
+        const x = Math.floor(r() * W), y = Math.floor(r() * H), a = y * W + x, b = (H - 1 - y) * W + (W - 1 - x);
+        if (!m[a] || !m[b]) continue; m[a] = false; m[b] = false; done += a === b ? 1 : 2;
+      }
+      if (done >= want && connected4(W, H, m)) return m;
+    }
+    return mask;
+  }
+  function crop({ W, H, mask }) { // trim empty edge rows/cols
+    let x0 = W, x1 = -1, y0 = H, y1 = -1;
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (mask[y * W + x]) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+    const nW = x1 - x0 + 1, nH = y1 - y0 + 1, m = [];
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) m.push(mask[y * W + x]);
+    return { W: nW, H: nH, mask: m };
+  }
+  const ADJ8 = [[-1,-1],[0,-1],[1,-1],[-1,0],[1,0],[-1,1],[0,1],[1,1]];
+  const ADJ4 = [[1,0],[-1,0],[0,1],[0,-1]];
+
+  // ---- star placement ----
+  function placeUniform(W, H, k, r) { // square: exactly k per row and col, no touching
+    const stars = new Set(), colCnt = new Array(W).fill(0);
+    let nodes = 0;
+    function combos(y) { // random subsets of k columns, non-adjacent
+      const res = [], cols = shuffle([...Array(W).keys()], r);
+      function rec(start, pick) { if (res.length > 60) return;
+        if (pick.length === k) { res.push([...pick]); return; }
+        for (let i = start; i < cols.length; i++) { const c = cols[i];
+          if (pick.some(p => Math.abs(p - c) <= 1)) continue; pick.push(c); rec(i + 1, pick); pick.pop(); } }
+      rec(0, []); return res;
+    }
+    function rec(y) { if (++nodes > 20000) return false; if (y === H) return true;
+      for (const cs of combos(y)) {
+        if (cs.some(c => colCnt[c] >= k)) continue;
+        if (cs.some(c => [-1, 0, 1].some(d => stars.has((y - 1) * W + c + d) && c + d >= 0 && c + d < W))) continue;
+        // capacity: remaining rows must be able to fill each column
+        cs.forEach(c => { colCnt[c]++; stars.add(y * W + c); });
+        const rowsLeft = H - y - 1; let ok = true;
+        for (let c = 0; c < W; c++) if (k - colCnt[c] > Math.ceil(rowsLeft / 2) + 0) { ok = false; break; }
+        if (ok && rec(y + 1)) return true;
+        cs.forEach(c => { colCnt[c]--; stars.delete(y * W + c); });
+      }
+      return false; }
+    return rec(0) ? stars : null;
+  }
+  function placeFree(W, H, mask, S, r) { // any shape: S stars, no touching, spread out
+    for (let t = 0; t < 300; t++) {
+      const stars = new Set(), blocked = new Uint8Array(W * H);
+      const cells = shuffle(mask.map((m, i) => m ? i : -1).filter(i => i >= 0), r);
+      for (const c of cells) { if (stars.size >= S) break; if (blocked[c]) continue;
+        stars.add(c); const x = c % W, y = (c / W) | 0; blocked[c] = 1;
+        for (const [dx, dy] of ADJ8) { const nx = x + dx, ny = y + dy; if (nx >= 0 && ny >= 0 && nx < W && ny < H) blocked[ny * W + nx] = 1; } }
+      if (stars.size === S) return stars;
+    }
+    return null;
+  }
+
+  // ---- region growth ----
+  function growRegions(W, H, mask, seedsList, r) { // seedsList: array of star cells, one region each
+    const reg = new Int16Array(W * H).fill(-1), size = [];
+    seedsList.forEach((c, i) => { reg[c] = i; size[i] = 1; });
+    let frontier = true;
+    while (frontier) { frontier = false;
+      const cand = [];
+      for (let c = 0; c < W * H; c++) { if (!mask[c] || reg[c] >= 0) continue;
+        const x = c % W, y = (c / W) | 0, ns = [];
+        for (const [dx, dy] of ADJ4) { const nx = x + dx, ny = y + dy;
+          if (nx >= 0 && ny >= 0 && nx < W && ny < H && reg[ny * W + nx] >= 0) ns.push(reg[ny * W + nx]); }
+        if (ns.length) cand.push([c, ns]); }
+      if (!cand.length) break; frontier = true;
+      // grow a random slice of the frontier, favouring small regions a little
+      shuffle(cand, r);
+      const take = Math.max(1, Math.floor(cand.length * 0.35));
+      for (let i = 0; i < take; i++) { const [c, ns] = cand[i]; if (reg[c] >= 0) continue;
+        ns.sort((a, b) => size[a] - size[b] + (r() - 0.5) * 6);
+        reg[c] = ns[0]; size[ns[0]]++; }
+    }
+    return reg;
+  }
+  function regionAdjacency(W, H, reg, R) {
+    const adj = Array.from({ length: R }, () => new Set());
+    for (let c = 0; c < W * H; c++) { if (reg[c] < 0) continue; const x = c % W, y = (c / W) | 0;
+      for (const [dx, dy] of [[1,0],[0,1]]) { const nx = x + dx, ny = y + dy;
+        if (nx < W && ny < H) { const o = reg[ny * W + nx]; if (o >= 0 && o !== reg[c]) { adj[reg[c]].add(o); adj[o].add(reg[c]); } } } }
+    return adj;
+  }
+  function groupRegions(W, H, reg, R, k, r) { // merge regions into connected groups of k, one star each
+    const adj = regionAdjacency(W, H, reg, R).map(s => shuffle([...s], r));
+    const group = new Array(R).fill(-1); let g = 0, nodes = 0;
+    function rec() {
+      if (++nodes > 200000) return false;
+      const start = group.findIndex(v => v < 0); if (start < 0) return true;
+      const options = [];
+      (function collect(members) {
+        if (members.length === k) { options.push(members.slice()); return; }
+        if (options.length > 40) return;
+        const nbrs = new Set();
+        for (const m of members) for (const o of adj[m]) if (group[o] < 0 && !members.includes(o)) nbrs.add(o);
+        for (const o of shuffle([...nbrs], r)) collect(members.concat(o));
+      })([start]);
+      for (const members of options) { members.forEach(m => group[m] = g); g++;
+        if (rec()) return true; members.forEach(m => group[m] = -1); g--; }
+      return false;
+    }
+    if (!rec()) return null;
+    const out = new Int16Array(W * H).fill(-1);
+    for (let c = 0; c < W * H; c++) if (reg[c] >= 0) out[c] = group[reg[c]];
+    return out;
+  }
+  // ---- solver: finds up to `limit` solutions ----
+  function solve(p, limit = 2, nodeLimit = 3e6) {
+    const { W, H, mask, region, rowT, colT, k, R } = p;
+    const cells = []; for (let c = 0; c < W * H; c++) if (mask[c]) cells.push(c);
+    const rowRem = new Int16Array(H), colRem = new Int16Array(W), regRem = new Int16Array(R);
+    for (const c of cells) { rowRem[(c / W) | 0]++; colRem[c % W]++; regRem[region[c]]++; }
+    const rowCnt = new Int16Array(H), colCnt = new Int16Array(W), regCnt = new Int16Array(R);
+    const star = new Uint8Array(W * H); const sols = []; let nodes = 0, aborted = false;
+    // quick infeasibility
+    for (let y = 0; y < H; y++) if (rowT[y] > rowRem[y]) return { sols, nodes, aborted };
+    for (let x = 0; x < W; x++) if (colT[x] > colRem[x]) return { sols, nodes, aborted };
+    function ok(y, x, g) { return rowCnt[y] + rowRem[y] >= rowT[y] && colCnt[x] + colRem[x] >= colT[x] && regCnt[g] + regRem[g] >= k; }
+    function rec(i) {
+      if (sols.length >= limit) return; if (++nodes > nodeLimit) { aborted = true; return; }
+      if (i === cells.length) { sols.push(cells.filter(c => star[c])); return; }
+      const c = cells[i], x = c % W, y = (c / W) | 0, g = region[c];
+      rowRem[y]--; colRem[x]--; regRem[g]--;
+      // try star
+      if (rowCnt[y] < rowT[y] && colCnt[x] < colT[x] && regCnt[g] < k &&
+          !(x > 0 && star[c - 1]) && !(y > 0 && (star[c - W] || (x > 0 && star[c - W - 1]) || (x < W - 1 && star[c - W + 1])))) {
+        star[c] = 1; rowCnt[y]++; colCnt[x]++; regCnt[g]++;
+        if (ok(y, x, g)) rec(i + 1);
+        star[c] = 0; rowCnt[y]--; colCnt[x]--; regCnt[g]--;
+        if (sols.length >= limit || aborted) { rowRem[y]++; colRem[x]++; regRem[g]++; return; }
+      }
+      if (ok(y, x, g)) rec(i + 1);
+      rowRem[y]++; colRem[x]++; regRem[g]++;
+    }
+    rec(0);
+    return { sols, nodes, aborted };
+  }
+
+  function regionConnectedWithout(W, H, reg, g, removed) {
+    const cells = []; for (let c = 0; c < W * H; c++) if (reg[c] === g && c !== removed) cells.push(c);
+    if (!cells.length) return false;
+    const inR = new Set(cells), seen = new Set([cells[0]]), st = [cells[0]];
+    while (st.length) { const c = st.pop(), x = c % W, y = (c / W) | 0;
+      for (const [dx, dy] of ADJ4) { const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+        const nc = ny * W + nx; if (inR.has(nc) && !seen.has(nc)) { seen.add(nc); st.push(nc); } } }
+    return seen.size === cells.length;
+  }
+
+  // ---- main generator ----
+  const SIZES = {
+    square:    { 1: [6, 8],  2: [8, 10] },
+    rectangle: { 1: [8, 10], 2: [10, 12] },
+    octagon:   { 1: [9, 13], 2: [11, 13] },
+    carved:    { 1: [9, 11], 2: [11, 12] },
+    blank:     { 1: [8, 10], 2: [8, 10] },
+  };
+  function generate({ shape = 'square', k = 1, size = 0, holes = false, regions = true, seed = Date.now() } = {}) {
+    const r = rng(seed), t0 = Date.now();
+    const n = arguments[0].n || SIZES[shape][k][size ? 1 : 0];
+    let attempts = 0, repairsTotal = 0;
+    for (;;) {
+      attempts++;
+      if (Date.now() - t0 > 500) return null;
+      let { W, H, mask } = shape === 'carved' ? Shapes.carved(n, r) : Shapes[shape](n);
+      if (holes) mask = punchHoles(W, H, mask, r);
+      ({ W, H, mask } = crop({ W, H, mask }));
+      const uniform = shape === 'square' && !holes && regions;
+      let stars;
+      if (uniform) stars = placeUniform(W, H, k, r);
+      else { const cellsN = mask.filter(Boolean).length;
+        let S = Math.round(cellsN * (regions ? (k === 1 ? 0.13 : 0.17) : cellsN <= 70 ? 0.13 : 0.09));
+        S -= S % k; if (S < k) continue; stars = placeFree(W, H, mask, S, r); }
+      if (!stars) continue;
+      const starList = [...stars];
+      let region, R;
+      if (regions) {
+        region = growRegions(W, H, mask, starList, r); R = starList.length;
+        if (k > 1) { region = groupRegions(W, H, region, R, k, r); if (!region) continue; R = R / k; }
+      } else { region = new Int16Array(W * H).fill(-1); for (let c = 0; c < W * H; c++) if (mask[c]) region[c] = 0; R = 1; }
+      const rowT = new Array(H).fill(0), colT = new Array(W).fill(0);
+      for (const c of starList) { rowT[(c / W) | 0]++; colT[c % W]++; }
+      const p = { W, H, mask, region, rowT, colT, k: regions ? k : starList.length, R, uniform, regions,
+        solution: starList.slice().sort((a, b) => a - b), givens: [] };
+      let good = false;
+      for (let rep = 0; rep < 80; rep++) {
+        const res = solve(p, 2, 4e6);
+        if (res.aborted) break;
+        if (res.sols.length === 1) { good = true; break; }
+        const truth = new Set(p.solution);
+        const alt = res.sols.find(s => s.length !== truth.size || s.some(c => !truth.has(c)));
+        if (!alt) break;
+        if (!regions) { // no regions to reshape, so pin down a star the other solution disagrees about
+          const cand = shuffle(p.solution.filter(c => !alt.includes(c) && !p.givens.includes(c)), r);
+          if (!cand.length || p.givens.length > p.solution.length * 0.6) break;
+          for (const c of cand.slice(0, 2)) p.givens.push(c);
+          repairsTotal++; continue;
+        }
+        const cand = shuffle(alt.filter(c => !truth.has(c)), r);
+        let moved = false;
+        for (const c of cand) { const x = c % W, y = (c / W) | 0, g = region[c];
+          const ns = shuffle(ADJ4.map(([dx, dy]) => [x + dx, y + dy]).filter(([nx, ny]) => nx >= 0 && ny >= 0 && nx < W && ny < H)
+            .map(([nx, ny]) => region[ny * W + nx]).filter(o => o >= 0 && o !== g), r);
+          if (!ns.length) continue;
+          if (!regionConnectedWithout(W, H, region, g, c)) continue;
+          region[c] = ns[0]; moved = true; repairsTotal++; break; }
+        if (!moved) break;
+      }
+      if (!good) continue;
+      const fin = solve(p, 2, 4e6);
+      p.stats = { ms: Date.now() - t0, attempts, repairs: repairsTotal, effort: fin.nodes };
+      return p;
+    }
+  }
+  return { generate, solve, SIZES, Shapes };
+})();
+if (typeof module !== 'undefined') module.exports = Engine;
+
+// ===== Game logic: marks, automatic blanks, hints, scoring (UI-free, ports to Swift) =====
+const Logic = (() => {
+  const EMPTY = 0, DOT = 1, STAR = 2, START = 3;
+  function units(P) { // rows, columns, regions as lists of cells with targets
+    const { W, H, mask, region, rowT, colT, k, R } = P, u = [];
+    for (let y = 0; y < H; y++) { const cells = []; for (let x = 0; x < W; x++) if (mask[y * W + x]) cells.push(y * W + x); if (cells.length) u.push({ kind: 'row', idx: y, cells, target: rowT[y] }); }
+    for (let x = 0; x < W; x++) { const cells = []; for (let y = 0; y < H; y++) if (mask[y * W + x]) cells.push(y * W + x); if (cells.length) u.push({ kind: 'column', idx: x, cells, target: colT[x] }); }
+    const rg = Array.from({ length: R }, () => []); for (let c = 0; c < W * H; c++) if (region[c] >= 0) rg[region[c]].push(c);
+    rg.forEach((cells, g) => u.push({ kind: 'region', idx: g, cells, target: k }));
+    return u;
+  }
+  function neighbours(P, c) { const { W, H, mask } = P, x = c % W, y = (c / W) | 0, out = [];
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const nx = x + dx, ny = y + dy;
+      if ((dx || dy) && nx >= 0 && ny >= 0 && nx < W && ny < H && mask[ny * W + nx]) out.push(ny * W + nx); }
+    return out; }
+  function startMarks(P) { // rows/cols that need 0 stars start blanked
+    const m = new Uint8Array(P.W * P.H);
+    for (const u of units(P)) if (u.target === 0) for (const c of u.cells) m[c] = START;
+    for (const c of P.givens || []) m[c] = STAR;
+    return m; }
+  function autoBlanks(P, marks, opts) { // derived, so removing a star removes its blanks
+    const s = new Set();
+    if (opts.around) for (let c = 0; c < marks.length; c++) if (marks[c] === STAR) for (const n of neighbours(P, c)) if (marks[n] === EMPTY) s.add(n);
+    if (opts.fill) for (const u of P.units) { let n = 0; for (const c of u.cells) if (marks[c] === STAR) n++;
+      if (n === u.target && u.target > 0) for (const c of u.cells) if (marks[c] === EMPTY) s.add(c); }
+    return s; }
+
+  const noun = u => u.kind === 'region' ? 'region' : u.kind;
+  const stars = n => n === 1 ? '1 hoop' : `${n} hoops`;
+
+  // Hints: first point out mistakes, then find the simplest logical step, else give a star.
+  function hint(P, marks, autoSet) {
+    const sol = new Set(P.solution);
+    for (let c = 0; c < marks.length; c++) if (marks[c] === STAR && !sol.has(c))
+      return { kind: 'mistake', level: 0, cells: [c], text: 'This hoop is in the wrong place. Take it off and look again.', apply: [[c, EMPTY]] };
+    for (let c = 0; c < marks.length; c++) if ((marks[c] === DOT || marks[c] === START) && sol.has(c))
+      return { kind: 'mistake', level: 0, cells: [c], text: 'This cell is X-ed out, but it could still hold a hoop. Clear it.', apply: [[c, EMPTY]] };
+
+    const isStar = c => marks[c] === STAR;
+    const open = c => P.mask[c] && marks[c] === EMPTY && !autoSet.has(c);
+    const blankHint = (cells, focus, text, level = 1) => ({ kind: 'blank', level, cells: focus, targets: cells, text, apply: cells.map(c => [c, DOT]) });
+
+    // 1. cells touching a star
+    for (let c = 0; c < marks.length; c++) if (isStar(c)) { const t = neighbours(P, c).filter(open);
+      if (t.length) return blankHint(t, [c], 'Hoops never touch, not even diagonally, so the open cells around this one can be X-ed out.'); }
+    const info = P.units.map(u => { const have = u.cells.filter(isStar).length, av = u.cells.filter(open); return { u, need: u.target - have, av }; });
+    // 2. finished units
+    for (const { u, need, av } of info) if (need === 0 && av.length)
+      return blankHint(av, u.cells, `This ${noun(u)} already has its ${stars(u.target)}, so everything else in it is empty.`);
+    // 3. exactly as many open cells as stars needed
+    for (const { u, need, av } of info) if (need > 0 && av.length === need)
+      return { kind: 'star', level: 1, cells: u.cells, targets: av, text: `This ${noun(u)} still needs ${stars(need)} and has only ${av.length === 1 ? 'one open cell' : av.length + ' open cells'} left.`, apply: av.map(c => [c, STAR]) };
+    // 4. a region squeezed into one row/column (and the reverse)
+    for (const a of info) for (const b of info) {
+      if (a === b || a.need <= 0 || a.need !== b.need || a.u.kind === b.u.kind) continue;
+      if (!(a.u.kind === 'region' || b.u.kind === 'region')) continue;
+      const bSet = new Set(b.u.cells);
+      if (a.av.length && a.av.every(c => bSet.has(c))) { const aSet = new Set(a.av), t = b.av.filter(c => !aSet.has(c));
+        if (t.length) return blankHint(t, a.u.cells.concat(b.u.cells),
+          `Every open cell in this ${noun(a.u)} sits inside the highlighted ${noun(b.u)}. Both need ${stars(a.need)}, so ${a.need === 1 ? 'that star comes' : 'those stars come'} from the shared cells and the rest of the ${noun(b.u)} is empty.`, 2); }
+    }
+    // 5. what-if: a star here leaves some row, column or region without room (with a short chain of forced moves)
+    const openCells = []; for (let c = 0; c < marks.length; c++) if (open(c)) openCells.push(c);
+    const base = marks.map((v, c) => v === STAR ? STAR : (P.mask[c] && !open(c)) ? DOT : v);
+    for (const depth of [0, 1, 4]) for (const c of openCells) {
+      const bad = tryStar(P, base, c, depth);
+      if (bad) return blankHint([c], [c, ...bad.cells], depth === 0
+        ? `If a hoop went here, it would block too many cells in the highlighted ${noun(bad)}, leaving no room for its hoops. So this cell is empty.`
+        : `If a hoop went here, the moves it forces would leave the highlighted ${noun(bad)} without room for its hoops. So this cell is empty.`, depth === 0 ? 3 : depth === 1 ? 4 : 5);
+    }
+    // 6. fallback
+    const miss = P.solution.filter(c => !isStar(c));
+    if (miss.length) { const c = miss[0];
+      return { kind: 'star', level: 6, cells: [c], targets: [c], text: 'No quick step stands out here, so here is one hoop to keep you moving.', apply: [[c, STAR]] }; }
+    return null;
+  }
+
+  function fits(P, cells, need) { // can `need` non-touching stars fit in these cells?
+    if (need <= 0) return true; if (cells.length < need) return false;
+    const [c, ...rest] = cells, nb = new Set(neighbours(P, c));
+    return fits(P, rest.filter(x => !nb.has(x)), need - 1) || fits(P, rest, need);
+  }
+  function tryStar(P, base, c, depth) { // returns the unit that breaks, or null
+    const m = base.slice(); const place = x => { m[x] = STAR; for (const n of neighbours(P, x)) { if (m[n] === STAR) return false; m[n] = DOT; } return true; };
+    if (!place(c)) return null;
+    for (let round = 0; round <= depth; round++) {
+      let changed = false;
+      for (const u of P.units) { const have = u.cells.filter(x => m[x] === STAR).length, av = u.cells.filter(x => m[x] === EMPTY), need = u.target - have;
+        if (need < 0 || !fits(P, av, need)) return u;
+        if (round < depth) { if (need === 0 && av.length) { av.forEach(x => m[x] = DOT); changed = true; }
+          else if (need > 0 && av.length === need) { for (const x of av) if (m[x] === EMPTY && !place(x)) return u; changed = true; } }
+      }
+      if (!changed && round < depth) break;
+    }
+    return null;
+  }
+  // Difficulty: solve with hints only and record the hardest step needed.
+  function grade(P) {
+    if (!P.units) P.units = units(P);
+    const m = startMarks(P); let maxLevel = 0, steps = 0; const byLevel = {};
+    for (;;) { const h = hint(P, m, new Set()); if (!h) break; steps++;
+      byLevel[h.level] = (byLevel[h.level] || 0) + 1;
+      maxLevel = Math.max(maxLevel, h.level); for (const [c, v] of h.apply) m[c] = v; if (steps > 400) break; }
+    return { maxLevel, steps, byLevel, difficulty: levelName(maxLevel) };
+  }
+  // Par: walk the same solving trace a person would follow and cost each deduction plus the taps it takes.
+  const THINK = { 1: 1.2, 2: 3, 3: 4.5, 4: 8, 5: 13, 6: 20 }; // seconds of thinking per step, by how hard the step is
+  const TAP = 1.1, SETUP = 6; // seconds per star placed, and a look at the board before starting
+  function parFromTrace(P) {
+    const g = P.grade || grade(P), find = P.solution.length - (P.givens || []).length;
+    let think = 0; for (const lvl in g.byLevel) think += THINK[lvl] * g.byLevel[lvl];
+    return Math.round((SETUP + think + TAP * find) / 5) * 5;
+  }
+  const SHAPE_CODES = { square: 'SQ', rectangle: 'RC', octagon: 'OC', carved: 'CV', blank: 'BL' };
+  const DIFF_CODES = { easy: 'E', medium: 'M', hard: 'H' };
+  function code(o, seed) { return `${SHAPE_CODES[o.shape]}${o.k}${o.size ? 'B' : 'S'}${DIFF_CODES[o.difficulty]}${o.holes ? 'H' : ''}${o.regions === false ? 'N' : ''}-${(seed >>> 0).toString(36)}`; }
+  function parseCode(str) {
+    const m = /^([A-Z]{2})([12])([SB])([EMH])(H?)(N?)-([0-9a-z]+)$/i.exec((str || '').trim()); if (!m) return null;
+    const shape = Object.keys(SHAPE_CODES).find(k => SHAPE_CODES[k] === m[1].toUpperCase());
+    const difficulty = Object.keys(DIFF_CODES).find(k => DIFF_CODES[k] === m[4].toUpperCase());
+    if (!shape || !difficulty) return null;
+    return { shape, k: Number(m[2]), size: m[3].toUpperCase() === 'B' ? 2 : 0, difficulty,
+      holes: m[5].toUpperCase() === 'H', regions: m[6].toUpperCase() !== 'N', seed: parseInt(m[7], 36) };
+  }
+  const RANGES = { easy: [0, 3], medium: [4, 4], hard: [5, 6] };
+  const levelName = l => l <= 3 ? 'easy' : l === 4 ? 'medium' : 'hard';
+  // Build a puzzle at the requested difficulty. Too hard: pre-place a few stars ("givens"). Too easy: try another.
+  function rng(seed) { let a = seed >>> 0; return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  // Same options and seed always give the same board, so two people can play an identical puzzle.
+  // The builder runs one attempt at a time, so it can be used straight through or spread over idle moments.
+  function makeBuilder(Engine, opts) {
+    const blank = opts.shape === 'blank';
+    if (blank || opts.regions === false) opts = { ...opts, k: 1 }; // without regions, stars per region means nothing
+    const genShape = blank ? 'blank' : opts.shape, genRegions = blank ? false : opts.regions !== false;
+    const [lo, hi] = RANGES[opts.difficulty];
+    const seed = opts.seed === undefined ? (Math.random() * 2 ** 31) | 0 : opts.seed, rnd = rng(seed);
+    // blocked cells are texture the generator adds to some boards, never a switch the player flips.
+    // The roll happens either way so that replaying a puzzle code follows the same random stream.
+    const holeRoll = rnd() < 0.28;
+    if (opts.holes === undefined) opts = { ...opts, holes: holeRoll };
+    let best = null, bestDist = Infinity, attempts = 0;
+    const t0 = Date.now();
+    return {
+      get best() { return best; },
+      done() { return bestDist === 0 || attempts >= 40 || (best && bestDist <= 1 && attempts >= 12); },
+      finish() {
+        if (!best) return null;
+        best.stats.ms = Date.now() - t0; best.difficulty = best.grade.difficulty; best.asked = opts.difficulty;
+        best.seed = seed; best.code = code(opts, seed); return best;
+      },
+      step() {
+        attempts++;
+        const P = Engine.generate({ shape: genShape, k: opts.k, size: opts.size, holes: !!opts.holes,
+          regions: genRegions, seed: (rnd() * 2 ** 31) | 0 });
+        if (!P) return;
+        P.units = units(P); P.size = opts.size; P.difficulty = opts.difficulty; P.givens = P.givens || [];
+        let g = grade(P);
+        const maxGivens = Math.max(1, Math.floor(P.solution.length * 0.35));
+        while (g.maxLevel > hi && P.givens.length < maxGivens) {
+          const left = P.solution.filter(c => !P.givens.includes(c));
+          P.givens.push(left[Math.floor(rnd() * left.length)]); g = grade(P);
+        }
+        const dist = g.maxLevel < lo ? lo - g.maxLevel : g.maxLevel > hi ? g.maxLevel - hi : 0;
+        P.grade = g;
+        if (dist < bestDist || (dist === bestDist && best && P.givens.length < best.givens.length)) { best = P; bestDist = dist; }
+      },
+    };
+  }
+  function build(Engine, opts, budgetMs = 1200) {
+    const b = makeBuilder(Engine, opts), t0 = Date.now();
+    while (!b.done() && Date.now() - t0 < budgetMs) b.step();
+    while (!b.best && !b.done() && Date.now() - t0 < budgetMs * 2) b.step(); // never come back empty if we can help it
+    return b.finish();
+  }
+  // Same work, yielding between attempts so the page stays responsive while it builds the next puzzle ahead of time.
+  function buildAsync(Engine, opts, done, budgetMs = 15000) {
+    const b = makeBuilder(Engine, opts), t0 = Date.now();
+    (function loop() {
+      if (b.done() || (Date.now() - t0 > budgetMs && b.best)) return done(b.finish());
+      b.step();
+      setTimeout(loop, 0);
+    })();
+  }
+  // A day's puzzle: the same board for everyone, with the week ramping up like a crossword.
+  const WEEK = [
+    { shape: 'square',    k: 1, size: 0, difficulty: 'easy' },     // Sunday
+    { shape: 'square',    k: 1, size: 0, difficulty: 'medium' },
+    { shape: 'octagon',   k: 1, size: 0, difficulty: 'medium' },
+    { shape: 'blank',     k: 1, size: 2, difficulty: 'medium' },
+    { shape: 'carved',    k: 1, size: 2, difficulty: 'hard' },
+    { shape: 'rectangle', k: 2, size: 0, difficulty: 'medium' },
+    { shape: 'square',    k: 2, size: 2, difficulty: 'hard' },     // Saturday
+  ];
+  function dailyOptions(date = new Date()) {
+    const y = date.getFullYear(), m = date.getMonth() + 1, d = date.getDate();
+    const key = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    let h = 2166136261; for (const ch of key) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
+    const base = WEEK[date.getDay()];
+    return { ...base, holes: (h >>> 7) % 4 === 0, seed: h >>> 0, day: key };
+  }
+  // Four rungs the player picks from. Each moves size, star count and reasoning depth together.
+  const RUNGS = [
+    { key: 'gentle', label: 'Gentle', setups: [
+      { k: 1, size: 0, difficulty: 'easy' }, { k: 1, size: 0, difficulty: 'easy', holes: true }] },
+    { key: 'steady', label: 'Steady', setups: [
+      { k: 1, size: 2, difficulty: 'easy' }, { k: 1, size: 0, difficulty: 'medium' }, { k: 1, size: 2, difficulty: 'medium' }] },
+    { key: 'tricky', label: 'Tricky', setups: [
+      { k: 2, size: 0, difficulty: 'medium' }, { k: 1, size: 2, difficulty: 'hard' }, { k: 2, size: 0, difficulty: 'hard', holes: true }] },
+    { key: 'brutal', label: 'Brutal', setups: [
+      { k: 2, size: 2, difficulty: 'hard' }, { k: 2, size: 2, difficulty: 'hard', holes: true }, { k: 2, size: 0, difficulty: 'hard' }] },
+  ];
+  const PICKER_SHAPES = ['square', 'rectangle', 'octagon', 'carved'];
+  function rungOptions(rungKey, shape, rnd = Math.random) {
+    const rung = RUNGS.find(r => r.key === rungKey) || RUNGS[0];
+    const setup = rung.setups[Math.floor(rnd() * rung.setups.length)];
+    const s = shape && shape !== 'random' ? shape : PICKER_SHAPES[Math.floor(rnd() * PICKER_SHAPES.length)];
+    return { shape: s, holes: false, ...setup, rung: rung.key };
+  }
+
+  function toJSON(P) {
+    return { W: P.W, H: P.H, mask: P.mask.map(Boolean), region: Array.from(P.region), rowT: P.rowT, colT: P.colT,
+      k: P.k, R: P.R, uniform: !!P.uniform, regions: P.regions !== false, solution: P.solution, givens: P.givens,
+      grade: P.grade, stats: P.stats, difficulty: P.difficulty, asked: P.asked, size: P.size, code: P.code, daily: P.daily || null };
+  }
+  function fromJSON(o) { const P = { ...o, region: Int16Array.from(o.region) }; P.units = units(P); return P; }
+
+  // Scoring is a golf score in seconds: your time plus penalties, measured against par.
+  function level(P) { return (P.size ? 1 : 0) + (P.difficulty === 'medium' ? 1 : P.difficulty === 'hard' ? 2 : 0); }
+  function costs(P) { const L = level(P); return { extraStar: 1 + L, reveal: 2 + L, hint: 10 + 5 * L }; }
+  function result(P, seconds, hints, extraStars, reveals) {
+    const c = costs(P), hintCost = hints * c.hint, extraCost = extraStars * c.extraStar, revealCost = reveals * c.reveal;
+    const penalty = hintCost + extraCost + revealCost, final = seconds + penalty, p = parFromTrace(P);
+    return { costs: c, hintCost, extraCost, revealCost, penalty, final, par: p, vsPar: final - p };
+  }
+  // Check: which of the player's own marks are wrong right now (automatic blanks follow from stars, so they are not counted)
+  function wrongCells(P, marks) {
+    const sol = new Set(P.solution), out = [];
+    for (let c = 0; c < marks.length; c++) if ((marks[c] === STAR && !sol.has(c)) || (marks[c] === DOT && sol.has(c))) out.push(c);
+    return out;
+  }
+  return { EMPTY, DOT, STAR, START, units, startMarks, autoBlanks, hint, grade, build, buildAsync, dailyOptions, WEEK, RUNGS, PICKER_SHAPES, rungOptions, toJSON, fromJSON, code, parseCode, level, costs, par: parFromTrace, parFromTrace, result, wrongCells };
+})();
+if (typeof module !== 'undefined') module.exports = Logic;
+
+(() => {
+const $ = id => document.getElementById(id);
+const { EMPTY, DOT, STAR, START } = Logic;
+const SHAPES = [['square','Square'],['rectangle','Rectangle'],['octagon','Octagon'],['carved','Carved'],['blank','Blank']];
+const PICK_SHAPES = [['random','Random'],['square','Square'],['rectangle','Rectangle'],['octagon','Octagon'],['carved','Carved']];
+const KS = [[1,'1 hoop'],[2,'2 hoops']];
+const SZ = [[0,'Small'],[2,'Big']];
+const DIFF = [['easy','Easy'],['medium','Medium'],['hard','Hard']];
+const NS = 'http://www.w3.org/2000/svg';
+const CS = 40, M = 30, SAVE = 'starproto-inprogress';
+
+let settings = { rung: 'gentle', pickShape: 'random', shape: 'square', k: 1, size: 0, difficulty: 'easy', holes: false,
+  auto: false, fill: true, err: true };
+try { const s = JSON.parse(localStorage.getItem('starproto-settings') || 'null'); if (s) Object.assign(settings, s); } catch (e) {}
+if (!SHAPES.some(([v]) => v === settings.shape)) settings.shape = 'square';
+if (settings.size === 1) settings.size = 0;
+if (settings.k > 2) settings.k = 2;
+function saveSettings() { try { localStorage.setItem('starproto-settings', JSON.stringify(settings)); } catch (e) {} }
+
+let P = null, marks = null, autoSet = new Set(), givenSet = new Set(), history = [];
+let solved = false, revealed = false, gaveUp = false, lastOpts = null;
+let t0 = 0, elapsed = 0, timerId = null, colors = [], hints = 0, curHint = null;
+let placements = 0, placedAt = new Map(), shows = 0; const GRACE_MS = 3000;
+
+// ---------- screens ----------
+let pickerView = 'menu', beforeSettings = 'menu';
+function showPicker(view = 'menu') {
+  if (view === 'settings' && pickerView !== 'settings') beforeSettings = pickerView;
+  pickerView = view;
+  $('game').hidden = true; $('picker').hidden = false;
+  for (const [id, key] of [['viewMenu','menu'],['viewPick','pick'],['viewOwn','own'],['viewSettings','settings']]) $(id).hidden = key !== view;
+  if (view === 'menu') renderMenu();
+  prefetch();
+}
+function showGame() { $('picker').hidden = true; $('game').hidden = false; }
+$('menuPick').onclick = () => showPicker('pick');
+$('menuOwn').onclick = () => showPicker('own');
+// the gear opens settings and closes them again, landing back where you were
+$('gearBtn').onclick = () => showPicker(pickerView === 'settings' ? beforeSettings : 'settings');
+$('setBack').onclick = () => showPicker(beforeSettings);
+$('pickBack').onclick = $('ownBack').onclick = () => showPicker('menu');
+
+function dailyDone() { try { return JSON.parse(localStorage.getItem('starproto-daily-' + Logic.dailyOptions().day) || 'null'); } catch (e) { return null; } }
+function renderMenu() {
+  const o = Logic.dailyOptions(), names = Object.fromEntries(SHAPES), done = dailyDone();
+  const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  $('dailySub').textContent = done ? (done.gaveUp ? `${days[new Date().getDay()]} — given up, back tomorrow` : `Finished in ${fmt(done.final)}`)
+    : `${days[new Date().getDay()]} · ${names[o.shape]}, ${o.k} hoop${o.k > 1 ? 's' : ''} per region, ${o.difficulty}`;
+  $('menuDaily').disabled = !!done;
+  const saved = savedGame();
+  $('resumeBtn').hidden = !saved;
+  if (saved) $('resumeInfo').textContent = `${saved.P.daily ? 'Daily' : cap(saved.P.difficulty)} board, paused at ${fmt(saved.elapsed)}`;
+  $('menuNote').textContent = 'Everyone gets the same daily board, so times are comparable.';
+}
+function renderWinPick() { // change your mind about the next board without leaving the card
+  segChoice($('winRungSeg'), Logic.RUNGS.map(r => [r.key, r.label]), settings.rung,
+    v => { settings.rung = v; saveSettings(); renderPickers(); renderWinPick(); prefetch(); });
+  segChoice($('winShapeSeg'), PICK_SHAPES, settings.pickShape,
+    v => { settings.pickShape = v; saveSettings(); renderPickers(); renderWinPick(); prefetch(); });
+  const sel = lastOpts && lastOpts.sel;
+  const same = sel && sel.rung === settings.rung && sel.pickShape === settings.pickShape;
+  $('winNew').textContent = same ? 'Another one' : 'Start';
+}
+function renderPickers() {
+  segChoice($('rungSeg'), Logic.RUNGS.map(r => [r.key, r.label]), settings.rung, v => { settings.rung = v; saveSettings(); renderPickers(); prefetch(); });
+  segChoice($('pickShapeSeg'), PICK_SHAPES, settings.pickShape, v => { settings.pickShape = v; saveSettings(); renderPickers(); prefetch(); });
+  segChoice($('shapeSeg'), SHAPES, settings.shape, v => { settings.shape = v; saveSettings(); renderPickers(); });
+  segChoice($('kSeg'), KS, settings.k, v => { settings.k = v; saveSettings(); renderPickers(); });
+  segChoice($('sizeSeg'), SZ, settings.size, v => { settings.size = v; saveSettings(); renderPickers(); });
+  segChoice($('diffSeg'), DIFF, settings.difficulty, v => { settings.difficulty = v; saveSettings(); renderPickers(); });
+  $('optAuto').checked = settings.auto;
+  $('optFill').checked = settings.fill; $('optErr').checked = settings.err;
+  $('kField').style.display = settings.shape === 'blank' ? 'none' : '';
+  const same = lastOpts && lastOpts.source === 'own' && optsKey(lastOpts.opts) === optsKey(ownOpts());
+  $('ownStart').textContent = same ? 'Another one' : 'Start';
+}
+function segChoice(el, items, value, onPick) {
+  el.innerHTML = '';
+  for (const [v, label] of items) { const b = document.createElement('button'); b.textContent = label;
+    b.setAttribute('aria-pressed', String(value === v)); b.onclick = () => onPick(v); el.appendChild(b); }
+}
+
+$('optAuto').onchange = e => { settings.auto = e.target.checked; saveSettings(); if (P) draw(); };
+$('optFill').onchange = e => { settings.fill = e.target.checked; saveSettings(); if (P) draw(); };
+$('optErr').onchange = e => { settings.err = e.target.checked; saveSettings(); if (P) draw(); };
+
+// ---------- building ----------
+let nextUp = null, nextKey = null, building = false;
+function ownOpts() { return { shape: settings.shape, k: settings.shape === 'blank' ? 1 : settings.k, size: settings.size,
+  difficulty: settings.difficulty }; }
+function pickOpts() { return Logic.rungOptions(settings.rung, settings.pickShape); }
+function optsKey(o) { return JSON.stringify(o); }
+function prefetch() { // build the likely next board quietly, in slices, while the player is busy
+  if (building) return;
+  const view = $('viewOwn').hidden === false ? 'own' : 'pick';
+  const o = view === 'own' ? ownOpts() : { rung: settings.rung, pickShape: settings.pickShape };
+  const key = optsKey(o);
+  if (nextUp && nextKey === key) return;
+  building = true;
+  const opts = view === 'own' ? o : pickOpts();
+  Logic.buildAsync(Engine, opts, p => { building = false; if (p) { nextUp = p; nextKey = key; } }, 8000);
+}
+function startPuzzle(opts, key, source) {
+  lastOpts = { opts, key, source: source || (lastOpts && lastOpts.source) || 'own',
+    sel: { rung: settings.rung, pickShape: settings.pickShape } };
+  showGame(); clearSaved();
+  $('busy').textContent = 'Building a puzzle…'; $('busy').classList.add('show');
+  $('win').classList.remove('show'); $('board').style.opacity = .25; closeBar();
+  if (nextUp && key && nextKey === key) { const p = nextUp; nextUp = null; nextKey = null; return begin(p, opts); }
+  setTimeout(() => begin(Logic.build(Engine, opts), opts), 30);
+}
+function begin(p, opts) {
+  $('busy').classList.remove('show'); $('board').style.opacity = 1;
+  if (!p) { $('busy').textContent = 'That combination did not build in time. Go back and try again.'; $('busy').classList.add('show'); return; }
+  if (opts && opts.daily) p.daily = opts.daily;
+  P = p; marks = Logic.startMarks(P); givenSet = new Set(P.givens); history = [];
+  solved = false; revealed = false; gaveUp = false; hints = 0; placements = 0; placedAt = new Map(); shows = 0;
+  colorRegions(); startTimer(0); buildBoard(); draw(); renderRules(); renderDev(); renderCounts(); renderNote(); renderPickers();
+  setTimeout(prefetch, 600);
+}
+$('menuDaily').onclick = () => { const o = Logic.dailyOptions(); startPuzzle({ ...o, daily: o.day }, null, 'daily'); };
+$('pickStart').onclick = () => startPuzzle(pickOpts(), optsKey({ rung: settings.rung, pickShape: settings.pickShape }), 'pick');
+$('ownStart').onclick = () => startPuzzle(ownOpts(), optsKey(ownOpts()), 'own');
+$('winNew').onclick = () => {
+  if (lastOpts && lastOpts.source === 'daily') return showPicker('menu');
+  if (lastOpts && lastOpts.source === 'pick') return startPuzzle(pickOpts(), optsKey({ rung: settings.rung, pickShape: settings.pickShape }), 'pick');
+  return startPuzzle(ownOpts(), optsKey(ownOpts()), 'own');
+};
+$('winMenu').onclick = () => showPicker('menu');
+$('codeGo').onclick = () => { const o = Logic.parseCode($('codeIn').value);
+  if (!o) { $('codeIn').value = ''; $('codeIn').placeholder = 'Not a puzzle code'; return; }
+  startPuzzle(o, null, 'own'); };
+$('codeIn').onkeydown = e => { if (e.key === 'Enter') $('codeGo').click(); };
+
+// ---------- pausing and resuming ----------
+function savedGame() { try { const s = JSON.parse(localStorage.getItem(SAVE) || 'null');
+  return s && s.P ? s : null; } catch (e) { return null; } }
+function clearSaved() { try { localStorage.removeItem(SAVE); } catch (e) {} }
+function pauseAndLeave() {
+  if (!P || solved) return showPicker('menu');
+  clearInterval(timerId);
+  try { localStorage.setItem(SAVE, JSON.stringify({ P: Logic.toJSON(P), marks: Array.from(marks), elapsed,
+    hints, placements, shows, opts: lastOpts && lastOpts.opts, key: lastOpts && lastOpts.key })); } catch (e) {}
+  closeBar(); showPicker('menu');
+}
+$('resumeBtn').onclick = () => { const s = savedGame(); if (!s) return;
+  showGame(); clearSaved();
+  P = Logic.fromJSON(s.P); marks = Uint8Array.from(s.marks); givenSet = new Set(P.givens); history = [];
+  solved = false; revealed = false; gaveUp = false; hints = s.hints || 0; placements = s.placements || 0; shows = s.shows || 0;
+  placedAt = new Map(); lastOpts = s.opts ? { opts: s.opts, key: s.key } : null;
+  colorRegions(); startTimer(s.elapsed || 0); buildBoard(); draw(); renderRules(); renderDev(); renderCounts(); renderNote();
+};
+window.addEventListener('pagehide', () => { if (P && !solved && !$('game').hidden) pauseAndLeave(); });
+
+// ---------- give up ----------
+$('quit').onclick = () => {
+  if (!P || solved) return showPicker('menu');
+  showBar('Leave this puzzle?', '', [
+    ['Leave for now', true, pauseAndLeave],
+    ['Give up and see it', false, () => {
+      gaveUp = true; revealed = true; solved = true; clearInterval(timerId);
+      marks = Logic.startMarks(P); for (const c of P.solution) marks[c] = STAR; closeBar(); draw();
+      if (P.daily) { try { localStorage.setItem('starproto-daily-' + P.daily, JSON.stringify({ gaveUp: true })); } catch (e) {} }
+      $('winTitle').textContent = 'Here it is';
+      $('winScore').innerHTML = `<dd class="note">No score for a puzzle you gave up on. Take a look at how it fits together.</dd>`;
+      $('win').classList.add('show');
+    }],
+    ['Keep playing', false, closeBar]], 'Leaving keeps the board so you can come back to it. Giving up ends the round.');
+};
+
+// ---------- timer, counts, text ----------
+function startTimer(from) { clearInterval(timerId); elapsed = from || 0; t0 = Date.now() - elapsed * 1000; tick(); timerId = setInterval(tick, 1000); }
+function tick() { if (solved) return; elapsed = Math.floor((Date.now() - t0) / 1000); $('timer').textContent = fmt(elapsed); }
+function fmt(s) { return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; }
+const cap = w => w[0].toUpperCase() + w.slice(1);
+function need() { return P.solution.length - P.givens.length; }
+function renderCounts() {
+  const n = need(), extra = Math.max(0, placements - n), parts = [`Placed: ${placements} of ${n}`];
+  if (extra) parts.push(`${extra} extra`);
+  if (hints) parts.push(`${hints} ${hints === 1 ? 'hint' : 'hints'}`);
+  if (shows) parts.push(`${shows} ${shows === 1 ? 'reveal' : 'reveals'}`);
+  const pen = Logic.result(P, 0, hints, extra, shows).penalty; if (pen) parts.push(`+${pen}s penalties`);
+  $('hintCount').textContent = parts.join(', ');
+}
+function renderNote() {
+  const g = P.givens.length, parts = [];
+  if (P.daily) parts.push(`Daily puzzle for ${P.daily}.`);
+  else if (P.difficulty !== P.asked && P.asked) parts.push(`This board didn't come out ${P.asked}, so it's ${P.difficulty}.`);
+  else parts.push(`${cap(P.difficulty)} puzzle.`);
+  if (g) parts.push(`${g === 1 ? '1 hoop is' : g + ' hoops are'} placed for you to start.`);
+  $('note').textContent = parts.join(' ');
+  $('gameTitle').textContent = P.daily ? 'Daily puzzle' : `${cap(P.difficulty)} · ${P.W}×${P.H}`;
+}
+function renderRules() {
+  const k = P.k, s = k === 1 ? 'hoop' : 'hoops', c = Logic.costs(P);
+  $('rules').textContent = !P.regions
+    ? `Drop ${P.solution.length} hoops so each row and column holds the number shown at its edges. Hoops never touch, not even diagonally. There are no regions to help you here.`
+    : P.uniform
+      ? `Drop hoops so every colored region, every row and every column holds exactly ${k} ${s}. Hoops never touch, not even diagonally.`
+      : `Drop hoops so every colored region holds exactly ${k} ${s}, and each row and column holds the number shown at its edges. Hoops never touch, not even diagonally.`;
+  $('scoring').textContent = `Target time ${fmt(Logic.par(P))}. Each extra hoop adds ${c.extraStar}s, each reveal ${c.reveal}s, each hint ${c.hint}s.`;
+}
+function renderDev() {
+  const s = P.stats || {}, cells = P.mask.filter(Boolean).length;
+  $('devStats').innerHTML = `<dt>Board</dt><dd>${P.W} × ${P.H}, ${cells} cells</dd><dt>Regions</dt><dd>${P.R}</dd>`
+    + `<dt>Built in</dt><dd>${s.ms || 0} ms, ${s.attempts || 1} tries</dd>`
+    + `<dt>Puzzle code</dt><dd>${P.code || '—'}</dd>`
+    + `<dt>Difficulty</dt><dd>${P.difficulty} (hardest step: level ${P.grade.maxLevel} of 6)</dd>`
+    + `<dt>Target from</dt><dd>${P.grade.steps} solving steps: ${Object.entries(P.grade.byLevel).map(([l, n]) => `${n}×L${l}`).join(', ')}</dd>`
+    + `<dt>Target time</dt><dd>${fmt(Logic.par(P))}</dd><dt>Starting stars</dt><dd>${P.givens.length}</dd>`;
+}
+
+// ---------- board drawing ----------
+function colorRegions() {
+  const { W, H, region, R } = P, adj = Array.from({ length: R }, () => new Set());
+  for (let c = 0; c < W * H; c++) { if (region[c] < 0) continue; const x = c % W;
+    if (x < W - 1 && region[c + 1] >= 0 && region[c + 1] !== region[c]) { adj[region[c]].add(region[c + 1]); adj[region[c + 1]].add(region[c]); }
+    if (c + W < W * H && region[c + W] >= 0 && region[c + W] !== region[c]) { adj[region[c]].add(region[c + W]); adj[region[c + W]].add(region[c]); } }
+  const order = [...Array(R).keys()].sort((a, b) => adj[b].size - adj[a].size), off = Math.floor(Math.random() * 10);
+  colors = new Array(R).fill(-1);
+  for (const g of order) { const used = new Set([...adj[g]].map(o => colors[o]));
+    for (let i = 0; i < 10; i++) { const c = (i + off + g * 3) % 10; if (!used.has(c)) { colors[g] = c; break; } }
+    if (colors[g] < 0) colors[g] = g % 10; }
+}
+let gCells, gShade, gGrid, gMarks, gDim, gHint, gClues;
+function el(tag, attrs, parent) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; }
+function buildBoard() {
+  const { W, H, mask, region } = P, svg = $('board');
+  svg.innerHTML = ''; svg.setAttribute('viewBox', `0 0 ${M + W * CS + M} ${M + H * CS + M}`);
+  svg.style.maxWidth = Math.min(640, (M * 2 + W * CS) * 1.7) + 'px';
+  gCells = el('g', {}, svg); gShade = el('g', {}, svg); gGrid = el('g', {}, svg); gMarks = el('g', {}, svg); gDim = el('g', {}, svg); gHint = el('g', {}, svg); gClues = el('g', {}, svg);
+  let thin = '', thick = '';
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const c = y * W + x; if (!mask[c]) continue;
+    const X = M + x * CS, Y = M + y * CS;
+    el('rect', { x: X, y: Y, width: CS, height: CS, fill: P.regions ? `var(--r${colors[region[c]]})` : 'var(--panel)', class: 'cell' }, gCells);
+    const g = region[c], rOf = (xx, yy) => (xx < 0 || yy < 0 || xx >= W || yy >= H || !mask[yy * W + xx]) ? -2 : region[yy * W + xx];
+    const edges = [[rOf(x + 1, y), `M${X + CS} ${Y}v${CS}`], [rOf(x, y + 1), `M${X} ${Y + CS}h${CS}`], [rOf(x - 1, y), `M${X} ${Y}v${CS}`], [rOf(x, y - 1), `M${X} ${Y}h${CS}`]];
+    edges.forEach(([o, d], i) => { if (o === g) { if (i < 2) thin += d; } else if (i < 2 || o === -2) thick += d; });
+  }
+  el('path', { d: thin, stroke: 'var(--thin)', 'stroke-width': 1, fill: 'none' }, gGrid);
+  el('path', { d: thick, stroke: 'var(--line)', 'stroke-width': 3.2, fill: 'none', 'stroke-linecap': 'square' }, gGrid);
+}
+function drawHoop(parent, X, Y, state) { // state: 'normal' | 'wrong' | 'win'
+  const outer = el('g', { transform: `translate(${X} ${Y + 1})` }, parent), g = el('g', {}, outer);
+  const fill = state === 'wrong' ? 'var(--bad)' : state === 'win' ? 'var(--gold)' : 'var(--o)';
+  el('circle', { cx: 1.2, cy: 2.2, r: 14, fill: 'none', stroke: 'var(--line)', 'stroke-width': 8, opacity: .16 }, g);
+  el('circle', { cx: 0, cy: 0, r: 14, fill: 'none', stroke: fill, 'stroke-width': 8 }, g);
+  el('circle', { cx: 0, cy: 0, r: 17.6, fill: 'none', stroke: 'var(--line)', 'stroke-width': 2.4 }, g);
+  el('circle', { cx: 0, cy: 0, r: 10.2, fill: 'none', stroke: 'var(--line)', 'stroke-width': 2.4 }, g);
+  el('path', { d: 'M-11.4 -8a14.6 14.6 0 0 1 6.6 -5.2', stroke: '#fff', 'stroke-width': 2.6, 'stroke-linecap': 'round', fill: 'none', opacity: .8 }, g);
+  return g;
+}
+function drawX(parent, X, Y, opacity) {
+  el('path', { d: `M${X - 8} ${Y - 8}l16 16M${X + 8} ${Y - 8}l-16 16`, stroke: 'var(--dot)', 'stroke-width': 3.4,
+    'stroke-linecap': 'round', opacity }, parent);
+}
+function analyse() {
+  const { W, H, region, rowT, colT, k, R } = P;
+  const rc = new Array(H).fill(0), cc = new Array(W).fill(0), gc = new Array(R).fill(0), bad = new Set();
+  for (let c = 0; c < W * H; c++) if (marks[c] === STAR) { rc[(c / W) | 0]++; cc[c % W]++; gc[region[c]]++; }
+  for (let c = 0; c < W * H; c++) if (marks[c] === STAR) { const x = c % W, y = (c / W) | 0;
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { if (!dx && !dy) continue; const nx = x + dx, ny = y + dy;
+      if (nx >= 0 && ny >= 0 && nx < W && ny < H && marks[ny * W + nx] === STAR) bad.add(c); }
+    if (rc[y] > rowT[y] || cc[x] > colT[x] || gc[region[c]] > k) bad.add(c); }
+  let done = bad.size === 0; for (let y = 0; y < H; y++) if (rc[y] !== rowT[y]) done = false;
+  for (let x = 0; x < W; x++) if (cc[x] !== colT[x]) done = false; for (let g = 0; g < R; g++) if (gc[g] !== k) done = false;
+  return { rc, cc, bad, done };
+}
+function draw(winAnim) {
+  const { W, H, rowT, colT } = P, a = analyse();
+  autoSet = Logic.autoBlanks(P, marks, { around: settings.auto, fill: settings.fill });
+  gMarks.innerHTML = ''; gClues.innerHTML = ''; gShade.innerHTML = '';
+  // a row or column with nothing left to decide fades back a little
+  const settled = (cells) => { let any = false;
+    for (const c of cells) { if (!P.mask[c]) continue; any = true; if (marks[c] === EMPTY && !autoSet.has(c)) return false; }
+    return any; };
+  const rowDone = [], colDone = [];
+  for (let y = 0; y < H; y++) rowDone[y] = settled(Array.from({ length: W }, (_, x) => y * W + x));
+  for (let x = 0; x < W; x++) colDone[x] = settled(Array.from({ length: H }, (_, y) => y * W + x));
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const c = y * W + x;
+    if (P.mask[c] && (rowDone[y] || colDone[x]))
+      el('rect', { x: M + x * CS, y: M + y * CS, width: CS, height: CS, fill: 'var(--line)', opacity: .09 }, gShade); }
+  for (let c = 0; c < W * H; c++) { if (!P.mask[c]) continue; const X = M + (c % W) * CS + CS / 2, Y = M + ((c / W) | 0) * CS + CS / 2;
+    if (marks[c] === START) drawX(gMarks, X, Y, .3);
+    else if (marks[c] === DOT) drawX(gMarks, X, Y, .9);
+    else if (marks[c] === EMPTY && autoSet.has(c)) drawX(gMarks, X, Y, .45);
+    else if (marks[c] === STAR) {
+      const badS = settings.err && a.bad.has(c), winState = solved && !revealed;
+      if (givenSet.has(c) && !winState) el('circle', { cx: X, cy: Y, r: 20, fill: 'none', stroke: 'var(--ink)', 'stroke-width': 1.5, opacity: .3 }, gMarks);
+      const g = drawHoop(gMarks, X, Y, badS ? 'wrong' : winState ? 'win' : 'normal');
+      if (winAnim) { g.classList.add('star-win'); g.style.animationDelay = (((c % W) + ((c / W) | 0)) * 45) + 'ms'; } } }
+  const clue = (x, y, t, n) => { const over = n > t, full = n === t;
+    el('text', { x, y, 'text-anchor': 'middle', 'dominant-baseline': 'central', 'font-size': 17, 'font-weight': 700,
+      fill: settings.err && over ? 'var(--bad)' : 'var(--muted)', opacity: full && !over ? .35 : 1 }, gClues).textContent = t; };
+  for (let y = 0; y < H; y++) if (P.mask.slice(y * W, y * W + W).some(Boolean)) {
+    clue(M / 2, M + y * CS + CS / 2, rowT[y], a.rc[y]); clue(M + W * CS + M / 2, M + y * CS + CS / 2, rowT[y], a.rc[y]); }
+  for (let x = 0; x < W; x++) if (P.mask.some((m, i) => m && i % W === x)) {
+    clue(M + x * CS + CS / 2, M / 2, colT[x], a.cc[x]); clue(M + x * CS + CS / 2, M + H * CS + M / 2, colT[x], a.cc[x]); }
+  drawHint();
+  if (a.done && !solved) win();
+}
+function win() {
+  solved = true; tick(); clearInterval(timerId); closeBar(); draw(true); clearSaved();
+  const extra = Math.max(0, placements - need()), r = Logic.result(P, elapsed, hints, extra, shows), c = r.costs;
+  const key = `starproto-best-${P.code ? P.code.split('-')[0] : 'x'}`;
+  let best = 0, isBest = false;
+  try { best = Number(localStorage.getItem(key) || 0); if (!best || r.final < best) { localStorage.setItem(key, r.final); isBest = true; } } catch (e) {}
+  const clean = !hints && !extra && !shows;
+  $('winTitle').textContent = clean ? 'Clean solve!' : isBest ? 'Solved, new best!' : 'Solved';
+  const row = (label, n, each, cost) => n ? `<dt>${label} ${n} × ${each}s</dt><dd>+${fmt(cost)}</dd>` : '';
+  const under = r.vsPar === 0 ? 'exactly on target' : r.vsPar < 0 ? `${fmt(-r.vsPar)} under the target` : `${fmt(r.vsPar)} over the target`;
+  $('winScore').innerHTML = `<dt>Time</dt><dd>${fmt(elapsed)}</dd>`
+    + row('Hints', hints, c.hint, r.hintCost) + row('Extra hoops', extra, c.extraStar, r.extraCost) + row('Reveals', shows, c.reveal, r.revealCost)
+    + `<dt class="total">Final</dt><dd class="total">${fmt(r.final)}</dd>`
+    + `<dt>Target</dt><dd>${fmt(r.par)}</dd><dd class="note">${under}</dd>`;
+  const fromPick = lastOpts && lastOpts.source === 'pick';
+  $('winPick').hidden = !fromPick;
+  if (fromPick) renderWinPick();
+  if (P.daily) $('winNew').textContent = 'Back to menu'; else if (!fromPick) $('winNew').textContent = 'Another one';
+  if (P.daily) { try { localStorage.setItem('starproto-daily-' + P.daily, JSON.stringify({ final: r.final, time: elapsed })); } catch (e) {} }
+  renderDev();
+  setTimeout(() => $('win').classList.add('show'), 700);
+}
+
+// ---------- hints, checks ----------
+function drawHint() {
+  gDim.innerHTML = ''; gHint.innerHTML = ''; if (!curHint) return;
+  const targets = new Set(curHint.targets && curHint.targets.length ? curHint.targets : curHint.cells);
+  const keep = new Set([...(curHint.cells || []), ...targets]);
+  const rect = c => { const X = M + (c % P.W) * CS, Y = M + ((c / P.W) | 0) * CS; return `M${X} ${Y}h${CS}v${CS}h${-CS}Z`; };
+  const vb = $('board').viewBox.baseVal;
+  let scrim = `M0 0h${vb.width}v${vb.height}h${-vb.width}Z`;
+  for (const c of keep) scrim += rect(c);
+  el('path', { d: scrim, 'fill-rule': 'evenodd', fill: 'var(--bg)', opacity: .72 }, gDim);
+  const accent = curHint.kind === 'mistake' ? 'var(--bad)' : 'var(--gold)';
+  const context = [...keep].filter(c => !targets.has(c));
+  if (context.length) { let edge = '';
+    for (const c of keep) { const x = c % P.W, y = (c / P.W) | 0, X = M + x * CS, Y = M + y * CS;
+      if (!keep.has(c - 1) || x === 0) edge += `M${X} ${Y}v${CS}`;
+      if (!keep.has(c + 1) || x === P.W - 1) edge += `M${X + CS} ${Y}v${CS}`;
+      if (!keep.has(c - P.W) || y === 0) edge += `M${X} ${Y}h${CS}`;
+      if (!keep.has(c + P.W) || y === P.H - 1) edge += `M${X} ${Y + CS}h${CS}`; }
+    el('path', { d: edge, stroke: accent, 'stroke-width': 2.5, fill: 'none', opacity: .7, 'stroke-dasharray': '6 4' }, gHint); }
+  for (const c of targets) { const X = M + (c % P.W) * CS, Y = M + ((c / P.W) | 0) * CS;
+    el('rect', { x: X + 1.5, y: Y + 1.5, width: CS - 3, height: CS - 3, rx: 5, fill: accent, opacity: .2 }, gHint);
+    el('rect', { x: X + 1.5, y: Y + 1.5, width: CS - 3, height: CS - 3, rx: 5, fill: 'none', stroke: accent, 'stroke-width': 4, class: 'hint-hl' }, gHint); }
+}
+function showBar(text, tone, buttons, note) {
+  const bar = $('hintBar'); bar.className = 'bar' + (tone ? ' ' + tone : ''); bar.hidden = false;
+  $('hintText').textContent = text; $('barNote').textContent = note || '';
+  const box = $('barBtns'); box.innerHTML = '';
+  for (const [label, primary, fn] of buttons) { const b = document.createElement('button'); b.textContent = label; if (primary) b.className = 'primary'; b.onclick = fn; box.appendChild(b); }
+}
+function closeBar() { curHint = null; $('hintBar').hidden = true; if (gDim) gDim.innerHTML = ''; if (gHint) gHint.innerHTML = ''; }
+function showHint() {
+  if (!P || solved) return;
+  const h = Logic.hint(P, marks, autoSet); if (!h) return;
+  curHint = h; hints++; renderCounts(); drawHint();
+  const what = h.kind === 'star' ? 'A hoop goes in' : h.kind === 'mistake' ? 'The problem is' : 'You can blank out';
+  showBar(h.text, '', [['Do it for me', true, applyHint], ['Got it', false, closeBar]],
+    `${what} the ringed cell${(h.targets || h.cells).length > 1 ? 's' : ''}. The dashed outline shows where the reasoning comes from.`);
+}
+function applyHint() { if (!curHint) return; snapshot(); const h = curHint; change(() => { for (const [c, v] of h.apply) marks[c] = v; }); closeBar(); draw(); }
+function showCheck() {
+  if (!P || solved) return; closeBar();
+  for (const c of placedAt.keys()) placedAt.set(c, -Infinity); // checking ends the misclick window
+  const wrong = Logic.wrongCells(P, marks);
+  if (!wrong.length) return showBar('Everything on the board so far is correct.', 'good', [['Keep going', true, closeBar]]);
+  const cost = Logic.costs(P).reveal;
+  showBar('Not quite. Something on the board is wrong.', 'bad', [
+    [`Show me (+${cost}s)`, true, () => { shows++; renderCounts();
+      curHint = { kind: 'mistake', cells: wrong, targets: wrong }; drawHint();
+      showBar(wrong.length === 1 ? 'This cell is marked wrong.' : `These ${wrong.length} cells are marked wrong.`, 'bad',
+        [['Do it for me', true, () => { snapshot(); change(() => { for (const c of wrong) marks[c] = EMPTY; }); closeBar(); draw(); }], ['Got it', false, closeBar]],
+        wrong.length === 1 ? 'The ringed cell is the one to change.' : 'The ringed cells are the ones to change.'); }],
+    ["I'll find it", false, closeBar]]);
+}
+$('hint').onclick = showHint; $('check').onclick = showCheck;
+
+// ---------- input ----------
+function cellAt(ev) { const svg = $('board'), r = svg.getBoundingClientRect(), vb = svg.viewBox.baseVal;
+  const x = Math.floor(((ev.clientX - r.left) / r.width * vb.width - M) / CS), y = Math.floor(((ev.clientY - r.top) / r.height * vb.height - M) / CS);
+  if (x < 0 || y < 0 || x >= P.W || y >= P.H) return -1; const c = y * P.W + x; return P.mask[c] ? c : -1; }
+function snapshot() { history.push(marks.slice()); if (history.length > 300) history.shift(); }
+function change(fn) { // every board change runs through here, so star placements are counted
+  const before = marks.slice(); fn(); const now = Date.now();
+  for (let c = 0; c < marks.length; c++) {
+    if (marks[c] === STAR && before[c] !== STAR) { placements++; placedAt.set(c, now); }
+    else if (before[c] === STAR && marks[c] !== STAR) { const t = placedAt.get(c);
+      if (t !== undefined && now - t < GRACE_MS) placements--; placedAt.delete(c); } }
+  renderCounts();
+}
+function nextState(c) { if (marks[c] === STAR) return EMPTY;
+  if (marks[c] === DOT || marks[c] === START || autoSet.has(c)) return STAR; return DOT; }
+let drag = null;
+const board = $('board');
+board.addEventListener('contextmenu', e => e.preventDefault());
+board.addEventListener('pointerdown', e => { if (!P || solved) return; const c = cellAt(e);
+  closeBar(); if (c < 0 || givenSet.has(c)) { draw(); return; }
+  snapshot();
+  if (e.button === 2) { change(() => { marks[c] = marks[c] === STAR ? EMPTY : STAR; }); draw(); return; }
+  const next = nextState(c); change(() => { marks[c] = next; }); draw();
+  drag = next === DOT ? { seen: new Set([c]) } : null; board.setPointerCapture(e.pointerId); });
+board.addEventListener('pointermove', e => { if (!drag) return; const c = cellAt(e);
+  if (c < 0 || drag.seen.has(c)) return; drag.seen.add(c); if (marks[c] === EMPTY && !autoSet.has(c)) { marks[c] = DOT; draw(); } });
+const endDrag = () => { drag = null; };
+board.addEventListener('pointerup', endDrag); board.addEventListener('pointercancel', endDrag);
+function undo() { if (!history.length || solved) return; const prev = history.pop(); change(() => { marks.set(prev); }); closeBar(); draw(); }
+$('undo').onclick = undo;
+$('clear').onclick = () => { if (!P || solved) return; snapshot(); const fresh = Logic.startMarks(P); change(() => { marks.set(fresh); }); closeBar(); draw(); };
+document.addEventListener('keydown', e => {
+  if ($('game').hidden) return;
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); return undo(); }
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const k = e.key.toLowerCase();
+  if (k === 'h') showHint(); else if (k === 'c') showCheck(); else if (k === 'u') undo();
+  else if (e.key === 'Escape') $('quit').click();
+});
+
+window.__puzzle = () => P; window.__marks = () => [...marks]; // for testing
+renderPickers(); showPicker('menu');
+})();
+</script></body></html>
