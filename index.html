@@ -88,12 +88,18 @@ details.dev summary { cursor: pointer; font-weight: 600; min-height: 32px; }
 #game { max-width: 660px; margin: 0 auto; padding: 18px 12px 40px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
 .gamehead { display: flex; align-items: center; gap: 12px; width: 100%; }
 .gamehead .title { font-weight: 700; }
-.gamehead .codechip { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .78rem; font-weight: 500;
+.codechip { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .78rem; font-weight: 500;
   color: var(--muted); background: var(--chip); border: 1px solid var(--chipedge); border-radius: 999px;
-  padding: 4px 10px; min-height: 0; line-height: 1.5; white-space: nowrap; }
-.gamehead .codechip:hover { border-color: var(--muted); color: var(--ink); }
-.gamehead .codechip[data-copied="yes"] { color: var(--ok); border-color: var(--ok); }
-.gamehead .codechip[data-copied="no"] { color: var(--bad); border-color: var(--bad); }
+  padding: 4px 10px; min-height: 0; line-height: 1.5; white-space: nowrap; align-self: flex-start; }
+.codechip:hover { border-color: var(--muted); color: var(--ink); }
+.codechip[data-copied="yes"] { color: var(--ok); border-color: var(--ok); }
+.codechip[data-copied="no"] { color: var(--bad); border-color: var(--bad); }
+/* How many hoops each colour holds: the rule the player checks most often. */
+.gamehead .kchip { display: inline-flex; align-items: center; gap: 5px; font-size: .82rem; font-weight: 600;
+  color: var(--muted); background: var(--chip); border: 1px solid var(--chipedge); border-radius: 999px;
+  padding: 3px 9px 3px 7px; white-space: nowrap; }
+.gamehead .kchip[hidden] { display: none; }
+.gamehead .kchip svg { display: block; }
 .gamehead .timer { margin-left: auto; font-variant-numeric: tabular-nums; font-weight: 700; font-size: 1.3rem; }
 .boardbox { position: relative; width: 100%; }
 #board { width: 100%; height: auto; display: block; margin: 0 auto; touch-action: none; user-select: none; -webkit-user-select: none; }
@@ -113,6 +119,9 @@ details.dev summary { cursor: pointer; font-weight: 600; min-height: 32px; }
 .overlay { position: fixed; inset: 0; z-index: 30; display: none; align-items: center; justify-content: center;
   padding: 16px; overflow-y: auto; overscroll-behavior: contain; background: rgba(10,14,22,.35); }
 .overlay.show { display: flex; }
+.overlay.blur { background: rgba(10,14,22,.5); backdrop-filter: blur(7px); -webkit-backdrop-filter: blur(7px); }
+.dialognote { color: var(--muted); font-size: .94rem; margin: 0 0 14px; }
+#dialogBtns { flex-wrap: wrap; gap: 8px; }
 .card { background: var(--panel); border-radius: 16px; padding: 18px 22px; text-align: center; margin: auto;
   box-shadow: 0 10px 40px rgba(0,0,0,.25); border: 2px solid var(--gold); width: min(420px, 100%); max-height: 100%; overflow-y: auto; }
 .card h2 { margin: 0 0 6px; font-size: 1.5rem; }
@@ -185,7 +194,7 @@ details.dev summary { cursor: pointer; font-weight: 600; min-height: 32px; }
 <div class="screen" id="game" hidden>
   <div class="gamehead">
     <span class="title" id="gameTitle"></span>
-    <button class="codechip" id="gameCode" title="Copy this puzzle's code"></button>
+    <span class="kchip" id="gameK" hidden></span>
     <span class="timer" id="timer">0:00</span>
   </div>
   <div class="boardbox">
@@ -201,6 +210,11 @@ details.dev summary { cursor: pointer; font-weight: 600; min-height: 32px; }
       <hr>
       <div class="rowbtns"><button class="primary" id="winNew">Another one</button><button id="winMenu">Menu</button></div></div></div>
   </div>
+  <div class="overlay" id="dialog"><div class="card">
+    <h2 id="dialogTitle"></h2>
+    <p class="dialognote" id="dialogNote"></p>
+    <div class="rowbtns" id="dialogBtns"></div>
+  </div></div>
   <div class="toolbar">
     <button id="undo">Undo</button>
     <button id="clear">Clear</button>
@@ -213,6 +227,7 @@ details.dev summary { cursor: pointer; font-weight: 600; min-height: 32px; }
   <p class="note" id="note"></p>
   <p class="help" id="rules"></p>
   <p class="help" id="scoring"></p>
+  <button class="codechip" id="gameCode" title="Copy this puzzle's code"></button>
 </div>
 <script src="engine.js"></script>
 <script src="logic.js"></script>

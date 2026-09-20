@@ -115,6 +115,33 @@ never which. From there, "Show me" outlines the wrong cells for a penalty, and "
 then clears them at no extra cost. Checking ends the misclick grace window (below), so a
 player can't test a speculative hoop with Check and then remove it for free.
 
+## Learning the rules
+
+The two helpers that blank squares out — "Blank out around stars" and "Blank out finished
+rows, columns and regions" — **start switched off**, so the rules get met by playing rather
+than by reading the settings screen. "Show rule breaks" stays **on**: it is feedback rather
+than assistance, and without it a first wrong hoop produces no response at all, which reads
+as a broken page rather than a hard puzzle.
+
+When a hoop lands on a square a helper would have blanked, the game names the rule that
+square breaks and offers the helper:
+
+| Trip | Rule | Helper offered |
+| --- | --- | --- |
+| The square touches a hoop already placed | Hoops never touch | Blank out around stars |
+| Its colour already holds its hoops | Every colour holds N | Blank out finished units |
+| Its row or column already holds its hoops | Every line holds its number | Blank out finished units |
+
+Asked on the 1st, 6th, 11th trip of that rule and so on — often enough to teach, rarely
+enough that a player who prefers marking by hand is not nagged. Three refusals of a helper
+stops it being offered for good, and at most one offer interrupts any single board. Counts
+live in `hoopla-ruletrips`.
+
+The check asks whether a hoop *on that square* breaks a rule, judged against the board as it
+stood before the move, and deliberately ignores what was marked on the square itself: a hoop
+is normally placed on a square the player has already X-ed, so testing the square's own mark
+would mean the touching rule almost never fired.
+
 ## Scoring
 
 A golf score in seconds: clock time plus penalties, measured against a target time.
@@ -148,10 +175,16 @@ Two screens exist, never both at once.
 (four rungs plus board type with Random as default), Let me pick (every raw dial, Blank
 included), and a gear for settings. A Resume button appears when a puzzle is in progress.
 
-**Board** — board, timer, and five buttons: Undo, Clear, Hint, Check, Give up. Give up offers
-"Leave for now" (pauses, keeps the board, resumable from the picker) or "Give up and see it"
-(ends the round, no score, shows the solution). Closing the tab pauses automatically.
-Keyboard: H hint, C check, U undo, Cmd+Z undo, Esc give up.
+**Board** — header, board, and five buttons: Undo, Clear, Hint, Check, Give up. The header
+carries the board's title, a chip showing how many hoops each colour holds (hidden on Blank
+boards, which have no colours), and the timer. The puzzle code sits under the board as a
+tap-to-copy chip. Closing the tab pauses automatically. Keyboard: H hint, C check, U undo,
+Cmd+Z undo, Esc give up.
+
+Anything the player has to answer — Give up, and the rule offers below — opens as a card over
+the board with the board blurred out behind it and **the clock stopped**, so a paused puzzle
+cannot be worked on while the question is up. The solution reveal after giving up is
+deliberately *not* blurred: the point of it is to look at the board.
 
 Finished rows and columns dim slightly once nothing in them is left to decide.
 
@@ -191,7 +224,7 @@ which cells exist, region per cell, row and column targets, hoops per region, th
 any givens, the grade and the code. That object is what an API would return.
 
 Local storage keys: `hoopla-settings`, `hoopla-inprogress`, `hoopla-daily-YYYY-MM-DD`,
-`hoopla-best-<code prefix>`, and `hoopla-migrated` to mark the one-time move off the old
+`hoopla-best-<code prefix>`, `hoopla-ruletrips`, and `hoopla-migrated` to mark the one-time move off the old
 `starproto-*` names. The migration in `ui.js` copies anything still under the old prefix and
 can be deleted once no tester has played a build older than 0.1.0.
 

@@ -11,7 +11,7 @@ const CS = 40, M = 30;
 
 // Bump BUILD before handing the URL to testers: it is what tells you which
 // version a bug report came from. See "Build stamp" in the README.
-const BUILD = '0.2.0 · 2026-09-20';
+const BUILD = '0.3.0 · 2026-09-20';
 
 // Storage moved from the prototype's old key prefix to hoopla-. Carry anything
 // already on the device across once, so nobody loses a puzzle in progress.
@@ -31,7 +31,7 @@ const NSKEY = 'hoopla-', OLDKEY = 'starproto-';
 const SAVE = NSKEY + 'inprogress';
 
 let settings = { rung: 'gentle', pickShape: 'random', shape: 'square', k: 1, size: 0, difficulty: 'easy', holes: false,
-  auto: false, fill: true, err: true };
+  auto: false, fill: false, err: true };
 try { const s = JSON.parse(localStorage.getItem(NSKEY + 'settings') || 'null'); if (s) Object.assign(settings, s); } catch (e) {}
 if (!SHAPES.some(([v]) => v === settings.shape)) settings.shape = 'square';
 if (settings.size === 1) settings.size = 0;
@@ -46,6 +46,7 @@ let placements = 0, placedAt = new Map(), shows = 0; const GRACE_MS = 3000;
 // ---------- screens ----------
 let pickerView = 'menu', beforeSettings = 'menu';
 function showPicker(view = 'menu') {
+  $('dialog').classList.remove('show', 'blur');
   if (view === 'settings' && pickerView !== 'settings') beforeSettings = pickerView;
   pickerView = view;
   $('game').hidden = true; $('picker').hidden = false;
@@ -164,6 +165,7 @@ function begin(p, opts) {
   if (opts && opts.daily) p.daily = opts.daily;
   P = p; marks = Logic.startMarks(P); givenSet = new Set(P.givens); history = [];
   solved = false; revealed = false; gaveUp = false; hints = 0; placements = 0; placedAt = new Map(); shows = 0;
+  offeredHere = false;
   colorRegions(); startTimer(0); buildBoard(); draw(); renderRules(); renderDev(); renderCounts(); renderNote(); renderPickers();
   setTimeout(prefetch, 600);
 }
@@ -197,6 +199,7 @@ $('resumeBtn').onclick = () => { const s = savedGame(); if (!s) return;
   P = Logic.fromJSON(s.P); marks = Uint8Array.from(s.marks); givenSet = new Set(P.givens); history = [];
   solved = false; revealed = false; gaveUp = false; hints = s.hints || 0; placements = s.placements || 0; shows = s.shows || 0;
   placedAt = new Map(); lastOpts = s.opts ? { opts: s.opts, key: s.key } : null;
+  offeredHere = false;
   colorRegions(); startTimer(s.elapsed || 0); buildBoard(); draw(); renderRules(); renderDev(); renderCounts(); renderNote();
 };
 window.addEventListener('pagehide', () => { if (P && !solved && !$('game').hidden) pauseAndLeave(); });
@@ -204,7 +207,9 @@ window.addEventListener('pagehide', () => { if (P && !solved && !$('game').hidde
 // ---------- give up ----------
 $('quit').onclick = () => {
   if (!P || solved) return showPicker('menu');
-  showBar('Leave this puzzle?', '', [
+  closeBar();
+  showModal('Leave this puzzle?',
+    'Leaving keeps the board so you can come back to it. Giving up ends the round.', [
     ['Leave for now', true, pauseAndLeave],
     ['Give up and see it', false, () => {
       gaveUp = true; revealed = true; solved = true; clearInterval(timerId);
@@ -214,11 +219,13 @@ $('quit').onclick = () => {
       $('winScore').innerHTML = `<dd class="note">No score for a puzzle you gave up on. Take a look at how it fits together.</dd>`;
       $('win').classList.add('show');
     }],
-    ['Keep playing', false, closeBar]], 'Leaving keeps the board so you can come back to it. Giving up ends the round.');
+    ['Keep playing', false, () => {}]]);
 };
 
 // ---------- timer, counts, text ----------
 function startTimer(from) { clearInterval(timerId); elapsed = from || 0; t0 = Date.now() - elapsed * 1000; tick(); timerId = setInterval(tick, 1000); }
+function pauseClock() { clearInterval(timerId); timerId = null; }
+function resumeClock() { if (timerId || !P || solved) return; t0 = Date.now() - elapsed * 1000; timerId = setInterval(tick, 1000); }
 function tick() { if (solved) return; elapsed = Math.floor((Date.now() - t0) / 1000); $('timer').textContent = fmt(elapsed); }
 function fmt(s) { return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; }
 const cap = w => w[0].toUpperCase() + w.slice(1);
@@ -250,6 +257,16 @@ function renderRules() {
     : P.uniform
       ? `Drop hoops so every colored region, every row and every column holds exactly ${k} ${s}. Hoops never touch, not even diagonally.`
       : `Drop hoops so every colored region holds exactly ${k} ${s}, and each row and column holds the number shown at its edges. Hoops never touch, not even diagonally.`;
+  const kc = $('gameK');
+  kc.hidden = !P.regions; // a blank board has no colours to count against
+  if (P.regions) {
+    kc.setAttribute('aria-label', `${k} ${s} per colour`);
+    kc.innerHTML = `<svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">`
+      + `<circle cx="12" cy="12" r="7.6" fill="none" stroke="var(--gold)" stroke-width="5"/>`
+      + `<circle cx="12" cy="12" r="10.1" fill="none" stroke="var(--line)" stroke-width="1.6"/>`
+      + `<circle cx="12" cy="12" r="5.1" fill="none" stroke="var(--line)" stroke-width="1.6"/></svg>`
+      + `<span>\u00d7 ${k}</span>`;
+  }
   $('scoring').textContent = `Target time ${fmt(Logic.par(P))}. Each extra hoop adds ${c.extraStar}s, each reveal ${c.reveal}s, each hint ${c.hint}s.`;
 }
 function renderDev() {
@@ -459,6 +476,102 @@ function copyText(text) {
   document.body.removeChild(t);
   return ok;
 }
+// ---------- dialogs that stop play ----------
+// Anything the player has to answer goes here rather than in the bar at the
+// foot of the screen: the clock stops and the board blurs out behind it, so a
+// paused puzzle cannot be worked on while the question is up.
+function showModal(title, note, buttons) {
+  $('dialogTitle').textContent = title;
+  $('dialogNote').textContent = note || '';
+  const box = $('dialogBtns'); box.innerHTML = '';
+  for (const [label, primary, fn] of buttons) {
+    const b = document.createElement('button');
+    b.textContent = label; if (primary) b.className = 'primary';
+    b.onclick = () => { closeModal(); fn(); };
+    box.appendChild(b);
+  }
+  pauseClock();
+  $('dialog').classList.add('show', 'blur');
+}
+// Restarts the clock on the way out. Anything that ends the round (giving up,
+// leaving) stops it again itself, so it does not matter that this runs first.
+function closeModal() { $('dialog').classList.remove('show', 'blur'); resumeClock(); }
+function modalOpen() { return $('dialog').classList.contains('show'); }
+
+// ---------- learning the rules ----------
+// The two helpers that blank squares out start switched off, so the rules get
+// met by playing rather than by reading the settings. When a hoop lands on a
+// square a helper would have blanked, name the rule it broke and offer the
+// helper. Asked on the 1st, 6th, 11th time and so on: often enough to teach,
+// rarely enough that someone who prefers marking by hand is not nagged.
+const TRIPS = NSKEY + 'ruletrips';
+function trips() { try { return JSON.parse(localStorage.getItem(TRIPS) || '{}'); } catch (e) { return {}; } }
+function saveTrips(t) { try { localStorage.setItem(TRIPS, JSON.stringify(t)); } catch (e) {} }
+
+// The smallest unit already holding all the hoops it needs.
+function fullUnit(c, before) {
+  for (const u of P.units) {
+    if (u.target <= 0 || !u.cells.includes(c)) continue;
+    let n = 0; for (const x of u.cells) if (before[x] === STAR) n++;
+    if (n >= u.target) return u;
+  }
+  return null;
+}
+// Which rule a hoop on this square breaks, judged against the board as it was
+// before the move. Only reports rules whose helper is still switched off.
+// Does a hoop here sit against one already on the board? Asked of the square
+// itself, not of what is marked on it: a hoop is normally placed on a square
+// the player has already X-ed, and autoBlanks only reports empty squares.
+function touchesHoop(c, before) {
+  const x = c % P.W, y = (c / P.W) | 0;
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+    if (!dx && !dy) continue;
+    const nx = x + dx, ny = y + dy;
+    if (nx < 0 || ny < 0 || nx >= P.W || ny >= P.H) continue;
+    if (before[ny * P.W + nx] === STAR) return true;
+  }
+  return false;
+}
+function ruleTrip(c, before) {
+  if (!settings.auto && touchesHoop(c, before))
+    return { kind: 'touch', helper: 'auto', opt: 'optAuto',
+      title: 'Hoops can never touch',
+      note: 'That square is right next to a hoop you have already placed, and hoops never touch, not even at the corners.',
+      offer: 'Want the squares around each hoop blanked out from now on?' };
+  if (!settings.fill) {
+    const u = fullUnit(c, before);
+    if (!u) return null;
+    const many = u.target === 1 ? 'one hoop' : `${u.target} hoops`;
+    return { kind: u.kind, helper: 'fill', opt: 'optFill',
+      title: u.kind === 'region' ? 'That colour is already full' : `That ${u.kind} is already full`,
+      note: u.kind === 'region'
+        ? `Every colour holds exactly ${many}, and this one already has what it needs.`
+        : `This ${u.kind} holds ${many}, and it already has what it needs.`,
+      offer: 'Want rows, columns and colours blanked out once they are finished?' };
+  }
+  return null;
+}
+let offeredHere = false; // at most one interruption per board
+function offerHelper(c, before) {
+  if (offeredHere || solved || modalOpen()) return;
+  const t = ruleTrip(c, before); if (!t) return;
+  const all = trips();
+  const seen = (all[t.kind] || 0) + 1, declined = all[t.helper + ':no'] || 0;
+  all[t.kind] = seen; saveTrips(all);
+  if (declined >= 3) return;   // asked and answered
+  if (seen % 5 !== 1) return;  // 1st, 6th, 11th, ...
+  offeredHere = true;
+  // Let the misplaced hoop land and turn red before covering the board.
+  setTimeout(() => {
+    if (!P || solved || modalOpen()) return;
+    showModal(t.title, `${t.note} ${t.offer}`, [
+      ['Yes, blank them out', true, () => {
+        settings[t.helper] = true; saveSettings(); $(t.opt).checked = true; draw(); }],
+      ['No thanks', false, () => {
+        const a = trips(); a[t.helper + ':no'] = (a[t.helper + ':no'] || 0) + 1; saveTrips(a); }]]);
+  }, 450);
+}
+
 $('buildStamp').textContent = `Hoopla build ${BUILD}`;
 $('gameCode').onclick = () => {
   const chip = $('gameCode'), text = `Hoopla ${P && P.code ? P.code : '\u2014'} \u00b7 build ${BUILD}`;
@@ -472,8 +585,11 @@ board.addEventListener('contextmenu', e => e.preventDefault());
 board.addEventListener('pointerdown', e => { if (!P || solved) return; const c = cellAt(e);
   closeBar(); if (c < 0 || givenSet.has(c)) { draw(); return; }
   snapshot();
-  if (e.button === 2) { change(() => { marks[c] = marks[c] === STAR ? EMPTY : STAR; }); draw(); return; }
+  const was = marks.slice();
+  if (e.button === 2) { change(() => { marks[c] = marks[c] === STAR ? EMPTY : STAR; }); draw();
+    if (marks[c] === STAR) offerHelper(c, was); return; }
   const next = nextState(c); change(() => { marks[c] = next; }); draw();
+  if (next === STAR) offerHelper(c, was);
   drag = next === DOT ? { seen: new Set([c]) } : null; board.setPointerCapture(e.pointerId); });
 board.addEventListener('pointermove', e => { if (!drag) return; const c = cellAt(e);
   if (c < 0 || drag.seen.has(c)) return; drag.seen.add(c); if (marks[c] === EMPTY && !autoSet.has(c)) { marks[c] = DOT; draw(); } });
