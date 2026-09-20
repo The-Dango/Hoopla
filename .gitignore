@@ -80,7 +80,7 @@ out
 
 # Nuxt.js build / generate output
 .nuxt
-dist
+dist/*
 .output
 
 # Gatsby files
@@ -141,3 +141,7 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+.DS_Store
+
+# dist/ is ignored above, but the single-file build is checked in on purpose.
+!dist/hoopla.html

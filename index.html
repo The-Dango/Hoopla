@@ -4,6 +4,20 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Hoopla</title>
+<meta name="description" content="A logic puzzle game in the family of Sudoku, Star Battle and Queens. Drop hoops so every region, row and column holds the right number, and no two hoops ever touch.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="theme-color" content="#E4E9EF" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#141A26" media="(prefers-color-scheme: dark)">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Hoopla">
+<meta property="og:title" content="Hoopla">
+<meta property="og:description" content="A logic puzzle game in the family of Sudoku, Star Battle and Queens.">
+<meta property="og:type" content="website">
+<meta property="og:image" content="icons/icon-512.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
@@ -58,6 +72,7 @@ button.primary.big small { color: rgba(255,255,255,.75); }
 fieldset { border: 0; padding: 0; margin: 0; }
 legend { font-weight: 600; margin-bottom: 8px; padding: 0; }
 .rules { color: var(--muted); margin: 0; font-size: .92rem; }
+.buildstamp { color: var(--muted); margin: 0; font-size: .75rem; text-align: center; opacity: .7; }
 label.opt { display: flex; gap: 10px; align-items: center; cursor: pointer; min-height: 40px; }
 label.opt input { width: 20px; height: 20px; accent-color: var(--ink); }
 .rowbtns { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -73,6 +88,12 @@ details.dev summary { cursor: pointer; font-weight: 600; min-height: 32px; }
 #game { max-width: 660px; margin: 0 auto; padding: 18px 12px 40px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
 .gamehead { display: flex; align-items: center; gap: 12px; width: 100%; }
 .gamehead .title { font-weight: 700; }
+.gamehead .codechip { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .78rem; font-weight: 500;
+  color: var(--muted); background: var(--chip); border: 1px solid var(--chipedge); border-radius: 999px;
+  padding: 4px 10px; min-height: 0; line-height: 1.5; white-space: nowrap; }
+.gamehead .codechip:hover { border-color: var(--muted); color: var(--ink); }
+.gamehead .codechip[data-copied="yes"] { color: var(--ok); border-color: var(--ok); }
+.gamehead .codechip[data-copied="no"] { color: var(--bad); border-color: var(--bad); }
 .gamehead .timer { margin-left: auto; font-variant-numeric: tabular-nums; font-weight: 700; font-size: 1.3rem; }
 .boardbox { position: relative; width: 100%; }
 #board { width: 100%; height: auto; display: block; margin: 0 auto; touch-action: none; user-select: none; -webkit-user-select: none; }
@@ -157,11 +178,14 @@ details.dev summary { cursor: pointer; font-weight: 600; min-height: 32px; }
     </details>
     <div class="rowbtns"><button id="setBack">Back</button></div>
   </div>
+
+  <p class="buildstamp" id="buildStamp"></p>
 </div>
 
 <div class="screen" id="game" hidden>
   <div class="gamehead">
     <span class="title" id="gameTitle"></span>
+    <button class="codechip" id="gameCode" title="Copy this puzzle's code"></button>
     <span class="timer" id="timer">0:00</span>
   </div>
   <div class="boardbox">

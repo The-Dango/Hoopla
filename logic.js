@@ -192,12 +192,55 @@ const Logic = (() => {
     { shape: 'rectangle', k: 2, size: 0, difficulty: 'medium' },
     { shape: 'square',    k: 2, size: 2, difficulty: 'hard' },     // Saturday
   ];
+  // The daily rolls over at midnight in New York, for everyone, wherever they are.
+  // Reading the device's own midnight would hand players in different timezones
+  // different boards on the same date. No time server is involved: the device clock
+  // is already kept accurate by the OS, and the only thing that needed fixing was
+  // which timezone the date gets read in. Change DAILY_TZ to 'UTC' to move the reset.
+  const DAILY_TZ = 'America/New_York';
+  const TZ_FMT = new Intl.DateTimeFormat('en-US', { timeZone: DAILY_TZ, year: 'numeric',
+    month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+
+  // What the zone's wall clock reads at this instant.
+  function zoneParts(date) {
+    const o = {};
+    for (const p of TZ_FMT.formatToParts(date)) if (p.type !== 'literal') o[p.type] = Number(p.value);
+    if (o.hour === 24) o.hour = 0; // some engines render midnight as hour 24
+    return o;
+  }
+  // How far that wall clock sits from UTC right now, daylight saving included.
+  function zoneOffsetMs(date) {
+    const p = zoneParts(date);
+    return Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second)
+      - Math.floor(date.getTime() / 1000) * 1000;
+  }
+  // The instant at which the zone's clock reads midnight on the given date. The offset
+  // shifts across a daylight saving boundary, so resolve twice: the second pass uses the
+  // offset in force at the answer rather than the one in force now.
+  function zoneMidnight(y, m, d) {
+    const wall = Date.UTC(y, m - 1, d);
+    let t = wall;
+    for (let i = 0; i < 2; i++) t = wall - zoneOffsetMs(new Date(t));
+    return t;
+  }
+  function dailyKey(date = new Date()) {
+    const p = zoneParts(date);
+    return `${p.year}-${String(p.month).padStart(2, '0')}-${String(p.day).padStart(2, '0')}`;
+  }
+  // When today's board gives way to tomorrow's, as an instant.
+  function nextDailyReset(date = new Date()) {
+    const p = zoneParts(date);
+    return new Date(zoneMidnight(p.year, p.month, p.day + 1));
+  }
+  function msUntilDailyReset(date = new Date()) {
+    return Math.max(0, nextDailyReset(date).getTime() - date.getTime());
+  }
   function dailyOptions(date = new Date()) {
-    const y = date.getFullYear(), m = date.getMonth() + 1, d = date.getDate();
-    const key = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    const key = dailyKey(date);
     let h = 2166136261; for (const ch of key) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
-    const base = WEEK[date.getDay()];
-    return { ...base, holes: (h >>> 7) % 4 === 0, seed: h >>> 0, day: key };
+    // Take the weekday from the key, so the label can never disagree with the board.
+    const weekday = new Date(key + 'T00:00:00Z').getUTCDay();
+    return { ...WEEK[weekday], holes: (h >>> 7) % 4 === 0, seed: h >>> 0, day: key, weekday };
   }
   // Four rungs the player picks from. Each moves size, star count and reasoning depth together.
   const RUNGS = [
@@ -239,6 +282,6 @@ const Logic = (() => {
     for (let c = 0; c < marks.length; c++) if ((marks[c] === STAR && !sol.has(c)) || (marks[c] === DOT && sol.has(c))) out.push(c);
     return out;
   }
-  return { EMPTY, DOT, STAR, START, units, startMarks, autoBlanks, hint, grade, build, buildAsync, dailyOptions, WEEK, RUNGS, PICKER_SHAPES, rungOptions, toJSON, fromJSON, code, parseCode, level, costs, par: parFromTrace, parFromTrace, result, wrongCells };
+  return { EMPTY, DOT, STAR, START, units, startMarks, autoBlanks, hint, grade, build, buildAsync, dailyOptions, dailyKey, nextDailyReset, msUntilDailyReset, DAILY_TZ, WEEK, RUNGS, PICKER_SHAPES, rungOptions, toJSON, fromJSON, code, parseCode, level, costs, par: parFromTrace, parFromTrace, result, wrongCells };
 })();
 if (typeof module !== 'undefined') module.exports = Logic;

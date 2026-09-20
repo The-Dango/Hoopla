@@ -7,15 +7,36 @@ const KS = [[1,'1 hoop'],[2,'2 hoops']];
 const SZ = [[0,'Small'],[2,'Big']];
 const DIFF = [['easy','Easy'],['medium','Medium'],['hard','Hard']];
 const NS = 'http://www.w3.org/2000/svg';
-const CS = 40, M = 30, SAVE = 'starproto-inprogress';
+const CS = 40, M = 30;
+
+// Bump BUILD before handing the URL to testers: it is what tells you which
+// version a bug report came from. See "Build stamp" in the README.
+const BUILD = '0.2.0 · 2026-09-20';
+
+// Storage moved from the prototype's old key prefix to hoopla-. Carry anything
+// already on the device across once, so nobody loses a puzzle in progress.
+const NSKEY = 'hoopla-', OLDKEY = 'starproto-';
+(function migrateStorage() {
+  try {
+    if (localStorage.getItem(NSKEY + 'migrated')) return;
+    for (const k of Object.keys(localStorage)) {
+      if (!k.startsWith(OLDKEY)) continue;
+      const to = NSKEY + k.slice(OLDKEY.length);
+      if (localStorage.getItem(to) === null) localStorage.setItem(to, localStorage.getItem(k));
+      localStorage.removeItem(k);
+    }
+    localStorage.setItem(NSKEY + 'migrated', '1');
+  } catch (e) {}
+})();
+const SAVE = NSKEY + 'inprogress';
 
 let settings = { rung: 'gentle', pickShape: 'random', shape: 'square', k: 1, size: 0, difficulty: 'easy', holes: false,
   auto: false, fill: true, err: true };
-try { const s = JSON.parse(localStorage.getItem('starproto-settings') || 'null'); if (s) Object.assign(settings, s); } catch (e) {}
+try { const s = JSON.parse(localStorage.getItem(NSKEY + 'settings') || 'null'); if (s) Object.assign(settings, s); } catch (e) {}
 if (!SHAPES.some(([v]) => v === settings.shape)) settings.shape = 'square';
 if (settings.size === 1) settings.size = 0;
 if (settings.k > 2) settings.k = 2;
-function saveSettings() { try { localStorage.setItem('starproto-settings', JSON.stringify(settings)); } catch (e) {} }
+function saveSettings() { try { localStorage.setItem(NSKEY + 'settings', JSON.stringify(settings)); } catch (e) {} }
 
 let P = null, marks = null, autoSet = new Set(), givenSet = new Set(), history = [];
 let solved = false, revealed = false, gaveUp = false, lastOpts = null;
@@ -32,7 +53,7 @@ function showPicker(view = 'menu') {
   if (view === 'menu') renderMenu();
   prefetch();
 }
-function showGame() { $('picker').hidden = true; $('game').hidden = false; }
+function showGame() { stopCountdown(); $('picker').hidden = true; $('game').hidden = false; }
 $('menuPick').onclick = () => showPicker('pick');
 $('menuOwn').onclick = () => showPicker('own');
 // the gear opens settings and closes them again, landing back where you were
@@ -40,17 +61,45 @@ $('gearBtn').onclick = () => showPicker(pickerView === 'settings' ? beforeSettin
 $('setBack').onclick = () => showPicker(beforeSettings);
 $('pickBack').onclick = $('ownBack').onclick = () => showPicker('menu');
 
-function dailyDone() { try { return JSON.parse(localStorage.getItem('starproto-daily-' + Logic.dailyOptions().day) || 'null'); } catch (e) { return null; } }
-function renderMenu() {
+function dailyDone() { try { return JSON.parse(localStorage.getItem(NSKEY + 'daily-' + Logic.dailyOptions().day) || 'null'); } catch (e) { return null; } }
+
+// Coarsest unit that still reads as a number: hours past the last hour, then
+// minutes past the last minute, then seconds.
+function until(ms) {
+  const s = Math.ceil(ms / 1000);
+  const n = s > 3600 ? Math.floor(s / 3600) : s > 60 ? Math.floor(s / 60) : s;
+  const unit = s > 3600 ? 'hour' : s > 60 ? 'minute' : 'second';
+  return `${n} ${unit}${n === 1 ? '' : 's'}`;
+}
+// Ticks only while the menu is up and today's board is spent; stops itself the
+// moment the clock rolls over, and re-renders so the new board unlocks in place.
+let dailyTimer = null;
+function stopCountdown() { if (dailyTimer) { clearInterval(dailyTimer); dailyTimer = null; } }
+function startCountdown() {
+  stopCountdown();
+  dailyTimer = setInterval(() => {
+    if ($('picker').hidden || pickerView !== 'menu') return stopCountdown();
+    if (Logic.msUntilDailyReset() <= 0) { stopCountdown(); return renderMenu(); }
+    renderDailySub();
+  }, 1000);
+}
+function renderDailySub() {
   const o = Logic.dailyOptions(), names = Object.fromEntries(SHAPES), done = dailyDone();
   const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-  $('dailySub').textContent = done ? (done.gaveUp ? `${days[new Date().getDay()]} — given up, back tomorrow` : `Finished in ${fmt(done.final)}`)
-    : `${days[new Date().getDay()]} · ${names[o.shape]}, ${o.k} hoop${o.k > 1 ? 's' : ''} per region, ${o.difficulty}`;
+  const next = `next puzzle in ${until(Logic.msUntilDailyReset())}`;
+  $('dailySub').textContent = !done
+    ? `${days[o.weekday]} · ${names[o.shape]}, ${o.k} hoop${o.k > 1 ? 's' : ''} per region, ${o.difficulty}`
+    : done.gaveUp ? `Given up — ${next}` : `Finished in ${fmt(done.final)} — ${next}`;
   $('menuDaily').disabled = !!done;
+  return done;
+}
+function renderMenu() {
+  const done = renderDailySub();
+  if (done) startCountdown(); else stopCountdown();
   const saved = savedGame();
   $('resumeBtn').hidden = !saved;
   if (saved) $('resumeInfo').textContent = `${saved.P.daily ? 'Daily' : cap(saved.P.difficulty)} board, paused at ${fmt(saved.elapsed)}`;
-  $('menuNote').textContent = 'Everyone gets the same daily board, so times are comparable.';
+  $('menuNote').textContent = 'Everyone gets the same daily board. It changes at midnight New York time.';
 }
 function renderWinPick() { // change your mind about the next board without leaving the card
   segChoice($('winRungSeg'), Logic.RUNGS.map(r => [r.key, r.label]), settings.rung,
@@ -160,7 +209,7 @@ $('quit').onclick = () => {
     ['Give up and see it', false, () => {
       gaveUp = true; revealed = true; solved = true; clearInterval(timerId);
       marks = Logic.startMarks(P); for (const c of P.solution) marks[c] = STAR; closeBar(); draw();
-      if (P.daily) { try { localStorage.setItem('starproto-daily-' + P.daily, JSON.stringify({ gaveUp: true })); } catch (e) {} }
+      if (P.daily) { try { localStorage.setItem(NSKEY + 'daily-' + P.daily, JSON.stringify({ gaveUp: true })); } catch (e) {} }
       $('winTitle').textContent = 'Here it is';
       $('winScore').innerHTML = `<dd class="note">No score for a puzzle you gave up on. Take a look at how it fits together.</dd>`;
       $('win').classList.add('show');
@@ -190,6 +239,9 @@ function renderNote() {
   if (g) parts.push(`${g === 1 ? '1 hoop is' : g + ' hoops are'} placed for you to start.`);
   $('note').textContent = parts.join(' ');
   $('gameTitle').textContent = P.daily ? 'Daily puzzle' : `${cap(P.difficulty)} · ${P.W}×${P.H}`;
+  const chip = $('gameCode');
+  chip.textContent = P.code || '—';
+  chip.hidden = !P.code;
 }
 function renderRules() {
   const k = P.k, s = k === 1 ? 'hoop' : 'hoops', c = Logic.costs(P);
@@ -302,7 +354,7 @@ function draw(winAnim) {
 function win() {
   solved = true; tick(); clearInterval(timerId); closeBar(); draw(true); clearSaved();
   const extra = Math.max(0, placements - need()), r = Logic.result(P, elapsed, hints, extra, shows), c = r.costs;
-  const key = `starproto-best-${P.code ? P.code.split('-')[0] : 'x'}`;
+  const key = `${NSKEY}best-${P.code ? P.code.split('-')[0] : 'x'}`;
   let best = 0, isBest = false;
   try { best = Number(localStorage.getItem(key) || 0); if (!best || r.final < best) { localStorage.setItem(key, r.final); isBest = true; } } catch (e) {}
   const clean = !hints && !extra && !shows;
@@ -312,12 +364,13 @@ function win() {
   $('winScore').innerHTML = `<dt>Time</dt><dd>${fmt(elapsed)}</dd>`
     + row('Hints', hints, c.hint, r.hintCost) + row('Extra hoops', extra, c.extraStar, r.extraCost) + row('Reveals', shows, c.reveal, r.revealCost)
     + `<dt class="total">Final</dt><dd class="total">${fmt(r.final)}</dd>`
-    + `<dt>Target</dt><dd>${fmt(r.par)}</dd><dd class="note">${under}</dd>`;
+    + `<dt>Target</dt><dd>${fmt(r.par)}</dd><dd class="note">${under}</dd>`
+    + `<dd class="note">Puzzle code ${P.code || '—'} · build ${BUILD}</dd>`;
   const fromPick = lastOpts && lastOpts.source === 'pick';
   $('winPick').hidden = !fromPick;
   if (fromPick) renderWinPick();
   if (P.daily) $('winNew').textContent = 'Back to menu'; else if (!fromPick) $('winNew').textContent = 'Another one';
-  if (P.daily) { try { localStorage.setItem('starproto-daily-' + P.daily, JSON.stringify({ final: r.final, time: elapsed })); } catch (e) {} }
+  if (P.daily) { try { localStorage.setItem(NSKEY + 'daily-' + P.daily, JSON.stringify({ final: r.final, time: elapsed })); } catch (e) {} }
   renderDev();
   setTimeout(() => $('win').classList.add('show'), 700);
 }
@@ -394,6 +447,27 @@ function nextState(c) { if (marks[c] === STAR) return EMPTY;
   if (marks[c] === DOT || marks[c] === START || autoSet.has(c)) return STAR; return DOT; }
 let drag = null;
 const board = $('board');
+// execCommand is deprecated, but it is synchronous and does not need the
+// clipboard permission, so it covers the cases where the async API refuses.
+function copyText(text) {
+  const t = document.createElement('textarea');
+  t.value = text; t.setAttribute('readonly', '');
+  t.style.position = 'fixed'; t.style.top = '0'; t.style.opacity = '0';
+  document.body.appendChild(t); t.select(); t.setSelectionRange(0, text.length);
+  let ok = false;
+  try { ok = document.execCommand('copy'); } catch (e) {}
+  document.body.removeChild(t);
+  return ok;
+}
+$('buildStamp').textContent = `Hoopla build ${BUILD}`;
+$('gameCode').onclick = () => {
+  const chip = $('gameCode'), text = `Hoopla ${P && P.code ? P.code : '\u2014'} \u00b7 build ${BUILD}`;
+  const show = ok => { chip.dataset.copied = ok ? 'yes' : 'no'; chip.textContent = ok ? 'Copied' : 'Press \u2318C';
+    setTimeout(() => { delete chip.dataset.copied; chip.textContent = P && P.code ? P.code : '\u2014'; }, 1400); };
+  const fallback = () => show(copyText(text));
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(() => show(true), fallback);
+  else fallback();
+};
 board.addEventListener('contextmenu', e => e.preventDefault());
 board.addEventListener('pointerdown', e => { if (!P || solved) return; const c = cellAt(e);
   closeBar(); if (c < 0 || givenSet.has(c)) { draw(); return; }
