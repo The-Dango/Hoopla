@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Hoopla</title>
-<meta name="build" content="0.5.0 · 2026-09-20">
+<meta name="build" content="0.6.0 · 2026-09-20">
 <meta name="description" content="A logic puzzle game in the family of Sudoku, Star Battle and Queens. Drop hoops so every region, row and column holds the right number, and no two hoops ever touch.">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
@@ -1308,12 +1308,23 @@ function showModal(title, note, buttons) {
     box.appendChild(b);
   }
   pauseClock();
+  modalAt = Date.now();
   $('game').classList.add('dialog-up');
   $('dialog').classList.add('show', 'blur');
 }
 // Restarts the clock on the way out. Anything that ends the round (giving up,
 // leaving) stops it again itself, so it does not matter that this runs first.
-function closeModal() { $('game').classList.remove('dialog-up'); $('dialog').classList.remove('show', 'blur'); resumeClock(); }
+// The 3s grace on removing a hoop runs on the wall clock, so a dialog would
+// eat it while the game clock is stopped. Push the placements forward by however
+// long the question was up, and reading it costs nothing.
+let modalAt = 0;
+function closeModal() {
+  const held = modalAt ? Date.now() - modalAt : 0; modalAt = 0;
+  if (held) for (const [c, t] of placedAt) placedAt.set(c, t + held);
+  $('game').classList.remove('dialog-up');
+  $('dialog').classList.remove('show', 'blur');
+  resumeClock();
+}
 function modalOpen() { return $('dialog').classList.contains('show'); }
 
 // ---------- learning the rules ----------
@@ -1391,7 +1402,11 @@ function offerHelper(c, before) {
     if (!P || solved || modalOpen()) return;
     showModal(t.title, `${t.note} ${t.offer}`, [
       ['Yes, blank them out', true, () => {
-        settings[t.helper] = true; saveSettings(); $(t.opt).checked = true; draw(); }],
+        settings[t.helper] = true; saveSettings(); $(t.opt).checked = true;
+        // Take the offending hoop off: the square it sits on is exactly the
+        // kind the player has just asked to have blanked out.
+        if (marks[c] === STAR) { snapshot(); change(() => { marks[c] = EMPTY; }); }
+        draw(); }],
       ['No thanks', false, () => {}],
       ['Stop showing these', false, () => {
         settings.quiet = true; saveSettings(); $('optQuiet').checked = true; }, 'quietbtn']]);

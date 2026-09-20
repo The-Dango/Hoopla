@@ -142,8 +142,15 @@ off — offered both in the gear and as a third choice on the reminder itself, s
 moment someone wants them gone is the moment one is in front of them. Counts live in
 `hoopla-ruletrips`.
 
+Saying yes switches the helper on **and takes the offending hoop off**: the square it sits
+on is exactly the kind the player has just asked to have blanked out, so leaving it there
+would contradict the answer. Saying no leaves the board alone — it means "let me do this by
+hand", not "fix it for me".
+
 While one is up the board is not merely blurred but flattened to grey, since blurring alone
-leaves the regions' shapes and colours readable through it.
+leaves the regions' shapes and colours readable through it. The clock stops, and so does the
+three-second grace on removing a hoop, which runs on the wall clock and would otherwise be
+eaten by the time spent reading the question.
 
 The check asks whether a hoop *on that square* breaks a rule, judged against the board as it
 stood before the move, and deliberately ignores what was marked on the square itself: a hoop
