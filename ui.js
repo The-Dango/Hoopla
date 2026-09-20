@@ -9,9 +9,10 @@ const DIFF = [['easy','Easy'],['medium','Medium'],['hard','Hard']];
 const NS = 'http://www.w3.org/2000/svg';
 const CS = 40, M = 30;
 
-// Bump BUILD before handing the URL to testers: it is what tells you which
-// version a bug report came from. See "Build stamp" in the README.
-const BUILD = '0.4.0 · 2026-09-20';
+// The build lives in index.html's <meta name="build">, which is also what
+// stamps the script URLs, so there is one thing to bump and the page can never
+// run against a cached older copy of this file.
+const BUILD = (document.querySelector('meta[name=build]') || {}).content || 'dev';
 
 // Storage moved from the prototype's old key prefix to hoopla-. Carry anything
 // already on the device across once, so nobody loses a puzzle in progress.

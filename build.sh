@@ -3,14 +3,16 @@
 # file to open locally; hosting serves the directory (index.html + the JS), so
 # a deploy does not need this script.
 #
-# The icon and manifest links stay relative, so they resolve only when this file
-# sits next to the icons/ directory. The game itself does not depend on them.
+# Everything between the SCRIPTS markers is the loader that fetches the three
+# JS files; here they are pasted in instead, so the file needs nothing beside it.
 set -e
-out="$(dirname "$0")/dist/hoopla.html"
-mkdir -p "$(dirname "$out")"
-{ sed 's|<script src="engine.js"></script>||; s|<script src="logic.js"></script>||; s|<script src="ui.js"></script>||' index.html \
-    | sed -n '1,/<script>/p'
+cd "$(dirname "$0")"
+out=dist/hoopla.html
+mkdir -p dist
+{ sed -n '1,/<!--SCRIPTS-->/p' index.html | sed '$d'
+  echo '<script>'
   cat engine.js; echo; cat logic.js; echo; cat ui.js
-  echo '</script></body></html>'
+  echo '</script>'
+  sed -n '/<!--\/SCRIPTS-->/,$p' index.html | sed '1d'
 } > "$out"
 echo "wrote $out"

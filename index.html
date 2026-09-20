@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Hoopla</title>
+<meta name="build" content="0.5.0 · 2026-09-20">
 <meta name="description" content="A logic puzzle game in the family of Sudoku, Star Battle and Queens. Drop hoops so every region, row and column holds the right number, and no two hoops ever touch.">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
@@ -240,10 +241,21 @@ details.dev summary { cursor: pointer; font-weight: 600; min-height: 32px; }
   <p class="help" id="scoring"></p>
   <button class="codechip" id="gameCode" title="Copy this puzzle's code"></button>
 </div>
-<script src="engine.js"></script>
-<script src="logic.js"></script>
-<script src="ui.js"></script>
+<!--SCRIPTS-->
 <script>
+// Load the game with the build stamped onto each URL. Without this a browser
+// happily pairs a freshly deployed page with the previous build's cached
+// scripts, which breaks as soon as the markup and the code disagree.
+(function () {
+  var v = document.querySelector('meta[name=build]').content;
+  ['engine.js', 'logic.js', 'ui.js'].forEach(function (f) {
+    var s = document.createElement('script');
+    s.src = f + '?v=' + encodeURIComponent(v);
+    s.async = false; // dynamically added scripts still run in insertion order
+    document.body.appendChild(s);
+  });
+})();
 </script>
+<!--/SCRIPTS-->
 </body>
 </html>

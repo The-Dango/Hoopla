@@ -13,7 +13,8 @@ no build step and no server.
 - `logic.js` — difficulty grading, hints, target times, scoring, puzzle codes, serialization
 - `ui.js` — screens, drawing, input
 - `manifest.webmanifest`, `icons/` — home-screen name and icon (the hoop, in gold)
-- `build.sh` — stitches the four into `dist/hoopla.html`, a single self-contained file
+- `build.sh` — replaces the loader between the `SCRIPTS` markers with the three files
+  inlined, giving `dist/hoopla.html`
 - `dist/hoopla.html` — the playable build, for handing someone one file to open
 
 Hosting serves the directory, not `dist/hoopla.html`: `index.html` plus the three JS files
@@ -239,9 +240,16 @@ can be deleted once no tester has played a build older than 0.1.0.
 
 ## Build stamp
 
-`BUILD` at the top of `ui.js` is the version testers see: on the menu under the buttons, on
-the win card, and in whatever the puzzle-code chip copies. **Bump it before pushing a build
-to testers** — it is the only thing that says which version a bug report came from.
+`<meta name="build">` in `index.html` is the version testers see: on the menu under the
+buttons, on the win card, and in whatever the puzzle-code chip copies. **Bump it before
+pushing a build to testers** — it is the only thing that says which version a bug report
+came from, and it is the one place the version lives.
+
+It also stamps the script URLs. A browser will otherwise pair a freshly deployed page with
+the previous build's cached JavaScript, and the moment the markup and the code disagree —
+a renamed element, say — the game dies on load for everyone who played before. The loader
+at the foot of `index.html` appends `?v=<build>` to each script so that cannot happen, which
+is why bumping the build is not optional.
 
 The puzzle code sits next to the title on the board screen. Tapping it copies
 `Hoopla <code> · build <BUILD>`, which is the whole of a reproducible bug report: the code

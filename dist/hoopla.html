@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Hoopla</title>
+<meta name="build" content="0.5.0 · 2026-09-20">
 <meta name="description" content="A logic puzzle game in the family of Sudoku, Star Battle and Queens. Drop hoops so every region, row and column holds the right number, and no two hoops ever touch.">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
@@ -240,9 +241,6 @@ details.dev summary { cursor: pointer; font-weight: 600; min-height: 32px; }
   <p class="help" id="scoring"></p>
   <button class="codechip" id="gameCode" title="Copy this puzzle's code"></button>
 </div>
-
-
-
 <script>
 // ===== Puzzle engine: shapes, generator, solver =====
 const Engine = (() => {
@@ -821,9 +819,10 @@ const DIFF = [['easy','Easy'],['medium','Medium'],['hard','Hard']];
 const NS = 'http://www.w3.org/2000/svg';
 const CS = 40, M = 30;
 
-// Bump BUILD before handing the URL to testers: it is what tells you which
-// version a bug report came from. See "Build stamp" in the README.
-const BUILD = '0.4.0 · 2026-09-20';
+// The build lives in index.html's <meta name="build">, which is also what
+// stamps the script URLs, so there is one thing to bump and the page can never
+// run against a cached older copy of this file.
+const BUILD = (document.querySelector('meta[name=build]') || {}).content || 'dev';
 
 // Storage moved from the prototype's old key prefix to hoopla-. Carry anything
 // already on the device across once, so nobody loses a puzzle in progress.
@@ -1437,4 +1436,6 @@ document.addEventListener('keydown', e => {
 window.__puzzle = () => P; window.__marks = () => [...marks]; // for testing
 renderPickers(); showPicker('menu');
 })();
-</script></body></html>
+</script>
+</body>
+</html>
