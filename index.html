@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Hoopla</title>
-<meta name="build" content="0.10.0 · 2026-09-20">
+<meta name="build" content="0.11.0 · 2026-09-20">
 <meta name="description" content="A logic puzzle game in the family of Sudoku, Star Battle and Queens. Drop hoops so every region, row and column holds the right number, and no two hoops ever touch.">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
@@ -175,10 +175,12 @@ details.dev summary { cursor: pointer; font-weight: 600; min-height: 32px; }
 .hint-hl { animation: glow 1.2s ease-in-out infinite alternate; }
 @keyframes glow { from { opacity: .55; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .star-win, .hint-hl { animation: none; } }
-/* The tutorial has no score and no clock, so the tools that serve them go. */
-#game.tut #undo, #game.tut #clear, #game.tut #hint, #game.tut #check, #game.tut .counts { display: none; }
-#game.tut #quit { min-width: 160px; }
-#game.tut .timer { display: none; }
+/* The tutorial has no score and no clock, so the tools that serve them go.
+   The rest of the toolbar comes back once the guided part is over. */
+#game.tut .timer, #game.tut .counts { display: none; }
+#game.tut.guided #undo, #game.tut.guided #clear,
+#game.tut.guided #hint, #game.tut.guided #check { display: none; }
+#game.tut.guided #quit { min-width: 160px; }
 @media (min-width: 880px) { #game { padding-top: 28px; } .toolbar button { flex: 0 1 auto; min-width: 110px; } }
 </style>
 </head>

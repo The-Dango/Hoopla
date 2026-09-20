@@ -124,77 +124,78 @@ function renderMenu() {
   $('menuNote').textContent = 'Everyone gets the same daily board. It changes at midnight New York time.';
 }
 // ---------- the tutorial ----------
-// A fixed 4x4, checked by hand to have exactly one solution. Small enough to
-// finish in a minute, big enough for all three rules to bite. It runs on the
-// real board, with the real drawing and the real input, so what is learned here
-// is what the game actually does.
+// A board the generator made, then frozen: building it fresh each time would
+// not give the same puzzle twice, because the builder runs attempts against a
+// wall clock and a slower machine gets through fewer of them. Checked
+// separately to have exactly one solution, no hoops placed to start, and two
+// solution squares away from the edges for the no-touching lesson to use.
+//
+// It is guided only as far as the first hoop and the rule that follows from
+// it. After that the player is left to think, and the ordinary rule reminders
+// do the teaching when a rule is actually broken.
 let tutorial = null;
-const TUT = {
-  W: 4, H: 4, k: 1,
-  mask: Array(16).fill(true),
-  region: [0,0,0,0, 0,2,1,1, 2,2,3,1, 3,3,3,3],
-  rowT: [1,1,1,1], colT: [1,1,1,1],
-  solution: [1, 7, 8, 14],
-  givens: [], regions: true, uniform: true, R: 4,
-  code: 'TUTORIAL', difficulty: 'easy',
-  grade: { maxLevel: 1, steps: 4, byLevel: { 1: 4 } },
+const TUT_BOARD = {
+  W: 6, H: 6, k: 1, R: 6, uniform: true, regions: true,
+  mask: Array(36).fill(true),
+  region: [3,1,1,1,0,2, 3,1,1,1,1,2, 3,3,4,4,2,2, 3,5,4,4,4,4, 5,5,4,4,4,4, 5,5,5,4,4,4],
+  rowT: [1,1,1,1,1,1], colT: [1,1,1,1,1,1],
+  solution: [4, 8, 17, 18, 27, 31],
+  givens: [],
+  grade: { maxLevel: 2, steps: 19, byLevel: { 1: 17, 2: 2 }, difficulty: 'easy' },
+  difficulty: 'easy', asked: 'easy', size: 0, code: 'SQ1SE-ru', daily: null,
 };
-// Squares touching the first hoop, which stage 2 is about.
-const TUT_TOUCHING = [0, 2, 4, 5, 6];
+
+function tutNeighbours(c) {
+  const x = c % P.W, y = (c / P.W) | 0, out = [];
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+    if (!dx && !dy) continue;
+    const nx = x + dx, ny = y + dy;
+    if (nx < 0 || ny < 0 || nx >= P.W || ny >= P.H) continue;
+    if (P.mask[ny * P.W + nx]) out.push(ny * P.W + nx);
+  }
+  return out;
+}
+// The solution square with the most neighbours, so the no-touching rule has
+// the most to show. Never one the board has already placed for the player.
+function tutTarget() {
+  const free = P.solution.filter(c => !givenSet.has(c));
+  return free.reduce((best, c) => tutNeighbours(c).length > tutNeighbours(best).length ? c : best, free[0]);
+}
 
 const STAGES = [
-  { text: 'Tap the ringed square twice \u2014 once for an X, again for a hoop.',
+  { text: 'Start here. Tap the ringed square twice \u2014 once for an X, then again for a hoop.',
     note: 'A square goes empty, then X, then hoop, then empty again.',
-    ring: [1],
-    done: () => marks[1] === STAR },
+    ring: () => [tutorial.target],
+    done: () => marks[tutorial.target] === STAR },
 
   { text: 'Hoops never touch, so none of the squares around that one can hold a hoop.',
     note: 'Not side by side, and not at the corners either.',
-    ring: TUT_TOUCHING, context: [1],
+    ring: () => tutNeighbours(tutorial.target).filter(c => marks[c] !== STAR),
+    context: () => [tutorial.target],
     offer: 'auto', opt: 'optAuto',
     ask: 'Want the squares around every hoop blanked out for you from now on?' },
 
-  { text: 'Every colour holds one hoop, and this colour has its hoop now.',
-    note: 'So the rest of that colour is out too.',
-    ringRegion: 0, context: [1],
-    offer: 'fillRegion', opt: 'optFillRegion',
-    ask: 'Want a colour blanked out once it is full?' },
-
-  { text: 'The numbers along the edges count that row and column. This row has its hoop.',
-    note: 'Every row and column here holds exactly one.',
-    ringRow: 0, context: [1],
-    offer: 'fillLine', opt: 'optFillLine',
-    ask: 'Want a row or column blanked out once it is full?' },
-
-  { text: 'That is all of it. Three hoops left \u2014 see if you can place them.',
-    note: 'One in every colour, one in every row and column, and none of them touching.',
-    done: () => TUT.solution.every(c => marks[c] === STAR) },
+  { text: 'The rest is yours. Every colour, every row and every column needs one hoop.',
+    note: 'Break a rule and the game will say so. The buttons below are yours now as well.',
+    free: true,
+    done: () => P.solution.every(c => marks[c] === STAR) },
 ];
 
-function tutRing(st) {
-  if (st.ring) return st.ring.slice();
-  if (st.ringRegion !== undefined) return TUT.region.map((r, c) => r === st.ringRegion ? c : -1).filter(c => c >= 0 && marks[c] !== STAR);
-  if (st.ringRow !== undefined) return [0,1,2,3].map(x => st.ringRow * 4 + x).filter(c => marks[c] !== STAR);
-  return [];
-}
 function showStage() {
   const st = STAGES[tutorial.i];
   if (!st) return tutDone();
-  const ring = tutRing(st);
-  curHint = ring.length ? { targets: ring, cells: [...ring, ...(st.context || [])], kind: 'star' } : null;
+  if (st.free) $('game').classList.remove('guided');
+  const ring = st.ring ? st.ring() : [];
+  curHint = ring.length
+    ? { targets: ring, cells: [...ring, ...(st.context ? st.context() : [])], kind: 'star' }
+    : null;
   draw();
-  const buttons = st.offer
-    ? [['Yes please', true, () => tutAccept(st)], ['Not now', false, () => tutNext()]]
-    : [];
-  showBar(st.offer ? `${st.text} ${st.ask}` : st.text, '', buttons, st.note);
+  showBar(st.offer ? `${st.text} ${st.ask}` : st.text, '',
+    st.offer ? [['Yes please', true, () => tutAccept(st)], ['Not now', false, tutNext]] : [],
+    st.note);
 }
-function tutAccept(st) {
-  settings[st.offer] = true; saveSettings(); $(st.opt).checked = true;
-  tutNext();
-}
+function tutAccept(st) { settings[st.offer] = true; saveSettings(); $(st.opt).checked = true; tutNext(); }
 function tutNext() { tutorial.i++; showStage(); }
-// Only the stages with a `done` test wait on the board; the rest are answered
-// with a button, so a change to the board cannot skip past them.
 function tutProgress() {
   if (!tutorial) return;
   const st = STAGES[tutorial.i];
@@ -206,7 +207,7 @@ function tutDone() {
   $('winTitle').textContent = 'That is the whole game';
   $('winScore').innerHTML = `<dd class="note">${on === 3
     ? 'With all three helpers on, the board will keep itself tidy while you think.'
-    : on ? 'You can switch the other helpers on any time under the gear.'
+    : on ? 'The other helpers are under the gear whenever you want them.'
          : 'The helpers are all under the gear if you change your mind.'}</dd>`;
   $('winPick').hidden = true;
   $('winMenu').hidden = true;
@@ -214,26 +215,31 @@ function tutDone() {
   $('win').classList.add('show');
 }
 function startTutorial() {
-  tutorial = { i: 0 };
+  tutorial = { i: 0, target: -1 };
   lastOpts = { opts: { shape: 'square', k: 1, size: 0, difficulty: 'easy' }, key: null, source: 'own' };
-  P = Logic.fromJSON(JSON.parse(JSON.stringify(TUT)));
-  marks = Logic.startMarks(P);
-  givenSet = new Set(); history = []; placements = 0; placedAt = new Map();
-  hints = 0; shows = 0; solved = false; gaveUp = false; revealed = false; curHint = null;
-  showGame(); clearSaved();
-  $('busy').classList.remove('show'); $('win').classList.remove('show'); $('board').style.opacity = 1;
-  colorRegions(); buildBoard(); renderRules(); renderDev(); renderCounts();
+  showGame(); clearSaved(); closeBar();
+  $('game').classList.add('tut', 'guided');
   $('gameTitle').textContent = 'How to play';
   $('quit').textContent = 'Leave';
   $('gameCode').hidden = true;
   $('note').textContent = '';
-  elapsed = 0; $('timer').textContent = '';
-  $('game').classList.add('tut');
+  $('win').classList.remove('show');
+  $('busy').classList.remove('show'); $('board').style.opacity = 1;
+  P = Logic.fromJSON(JSON.parse(JSON.stringify(TUT_BOARD)));
+  marks = Logic.startMarks(P);
+  givenSet = new Set();
+  history = []; placements = 0; placedAt = new Map();
+  hints = 0; shows = 0; solved = false; gaveUp = false; revealed = false; curHint = null;
+  elapsed = 0;
+  colorRegions(); buildBoard(); renderRules(); renderDev(); renderCounts();
+  tutorial.target = tutTarget();
   showStage();
 }
 function endTutorial() {
-  tutorial = null; $('quit').textContent = 'Give up'; $('game').classList.remove('tut');
-  $('gameCode').hidden = false; $('timer').textContent = '0:00';
+  tutorial = null;
+  $('game').classList.remove('tut', 'guided');
+  $('quit').textContent = 'Give up';
+  $('gameCode').hidden = false;
 }
 
 // ---------- how to play ----------

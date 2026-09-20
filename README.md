@@ -202,29 +202,31 @@ the reminders teach them in play, and the header chip carries the only board-spe
 
 ## The tutorial
 
-A fixed 4×4, checked to have exactly one solution, run on the real board with the real
-drawing and the real input, so what is learned is what the game actually does. There is no
-clock and no score, and Undo, Clear, Hint and Check are hidden: nothing to do here but the
-five steps.
+A 6×6 easy board, run with the real drawing and the real input, so what is learned is what
+the game actually does. It is guided for two steps and then gets out of the way:
 
 | Stage | Teaches | Offers |
 | --- | --- | --- |
 | 1 | A square cycles empty → X → hoop | — |
 | 2 | Hoops never touch | Blank out around stars |
-| 3 | Every colour holds its number | Blank out a full colour |
-| 4 | The edge numbers count their line | Blank out a full row or column |
-| 5 | Finish the board unaided | — |
+| 3 | The board is yours | — |
 
-The point of the middle three is that each rule arrives immediately before the helper that
-acts on it, so a player meets the setting at the moment it means something rather than as a
-line in the gear. Accepting switches it on for good; declining leaves it off and moves on.
-Stage 1 and stage 5 wait on the board, the rest on a button, so a stray tap cannot skip a
-lesson.
+Only the rule that follows directly from placing a hoop is taught up front. The other two
+arrive through the ordinary rule reminders, when the player actually puts a hoop in a full
+colour or a full line — which is the same lesson, at the moment it means something, instead
+of a fourth dialog in a row before any real play has happened. The toolbar comes back at
+stage 3, so the rest of it is an ordinary game with no clock and no score.
 
-Declining is not the end of it. The ordinary rule reminders run inside the tutorial as well,
-and there they appear **every** time the rule is broken rather than every third: someone who
-said no and then breaks that rule is exactly who the lesson is for. Those breaks do not count
-towards the real game's tally, so the reminders a player meets later are unaffected.
+Inside the tutorial the reminders appear **every** time a rule is broken rather than every
+third: someone who declined a helper and then breaks that rule is exactly who the lesson is
+for. Those breaks do not count towards the real game's tally, so the reminders met later are
+unaffected.
+
+The board is one the generator made, then frozen into `TUT_BOARD`. Building it fresh from a
+fixed seed does not give the same puzzle twice — the builder runs attempts against a wall
+clock, so a slower machine gets through fewer of them and a different candidate wins. It was
+checked separately to have exactly one solution, contiguous regions, no hoops placed to
+start, and solution squares away from the edges for the no-touching lesson to use.
 
 The example boards are written out by hand rather than generated — the generator starts at
 6×6, and an example wants to be small enough to take in at a glance — but they are drawn
