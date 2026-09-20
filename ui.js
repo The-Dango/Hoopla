@@ -50,22 +50,36 @@ let t0 = 0, elapsed = 0, timerId = null, colors = [], hints = 0, curHint = null;
 let placements = 0, placedAt = new Map(), shows = 0; const GRACE_MS = 3000;
 
 // ---------- screens ----------
-let pickerView = 'menu', beforeSettings = 'menu';
+let pickerView = 'menu', settingsFrom = null; // where the gear was pressed
 function showPicker(view = 'menu') {
   $('dialog').classList.remove('show', 'blur'); $('game').classList.remove('dialog-up');
-  if (view === 'settings' && pickerView !== 'settings') beforeSettings = pickerView;
+  if (view !== 'settings') settingsFrom = null;
   pickerView = view;
   $('game').hidden = true; $('picker').hidden = false;
   for (const [id, key] of [['viewMenu','menu'],['viewPick','pick'],['viewOwn','own'],['viewSettings','settings']]) $(id).hidden = key !== view;
   if (view === 'menu') renderMenu();
   prefetch();
 }
-function showGame() { stopCountdown(); $('picker').hidden = true; $('game').hidden = false; }
+function showGame() { stopCountdown(); settingsFrom = null; $('picker').hidden = true; $('game').hidden = false; }
 $('menuPick').onclick = () => showPicker('pick');
 $('menuOwn').onclick = () => showPicker('own');
-// the gear opens settings and closes them again, landing back where you were
-$('gearBtn').onclick = () => showPicker(pickerView === 'settings' ? beforeSettings : 'settings');
-$('setBack').onclick = () => showPicker(beforeSettings);
+// The gear goes straight to settings from wherever it is pressed, and the gear
+// again, or Back, returns to exactly that place: a picker view, or the board
+// mid-puzzle with the clock picked up where it left off.
+function openSettings(from) {
+  if (settingsFrom) return closeSettings(); // pressing it again backs out
+  settingsFrom = from;
+  if (from === 'game') pauseClock();
+  showPicker('settings');
+}
+function closeSettings() {
+  const from = settingsFrom; settingsFrom = null;
+  if (from === 'game' && P && !solved) { showGame(); resumeClock(); return; }
+  showPicker(from && from !== 'game' ? from : 'menu');
+}
+$('gearBtn').onclick = () => openSettings(pickerView);
+$('gameGear').onclick = () => openSettings('game');
+$('setBack').onclick = closeSettings;
 $('pickBack').onclick = $('ownBack').onclick = () => showPicker('menu');
 
 function dailyDone() { try { return JSON.parse(localStorage.getItem(NSKEY + 'daily-' + Logic.dailyOptions().day) || 'null'); } catch (e) { return null; } }
@@ -223,6 +237,9 @@ $('quit').onclick = () => {
       if (P.daily) { try { localStorage.setItem(NSKEY + 'daily-' + P.daily, JSON.stringify({ gaveUp: true })); } catch (e) {} }
       $('winTitle').textContent = 'Here it is';
       $('winScore').innerHTML = `<dd class="note">No score for a puzzle you gave up on. Take a look at how it fits together.</dd>`;
+      $('winPick').hidden = true;
+      $('winMenu').hidden = !!P.daily;
+      $('winNew').textContent = P.daily ? 'Back to menu' : 'Another one';
       $('win').classList.add('show');
     }],
     ['Keep playing', false, () => {}]]);
@@ -266,12 +283,14 @@ function renderRules() {
   const kc = $('gameK');
   kc.hidden = !P.regions; // a blank board has no colours to count against
   if (P.regions) {
-    kc.setAttribute('aria-label', `${k} ${s} per colour`);
+    kc.setAttribute('aria-label', `${k} ${s} needed in every colour`);
+    // var(--o), the colour a hoop is while the puzzle is unsolved. Gold is the
+    // solved state, and this is a reminder of what to place, not of finishing.
     kc.innerHTML = `<svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">`
-      + `<circle cx="12" cy="12" r="7.6" fill="none" stroke="var(--gold)" stroke-width="5"/>`
+      + `<circle cx="12" cy="12" r="7.6" fill="none" stroke="var(--o)" stroke-width="5"/>`
       + `<circle cx="12" cy="12" r="10.1" fill="none" stroke="var(--line)" stroke-width="1.6"/>`
       + `<circle cx="12" cy="12" r="5.1" fill="none" stroke="var(--line)" stroke-width="1.6"/></svg>`
-      + `<span>\u00d7 ${k}</span>`;
+      + `<span class="kfull">${k} per colour</span><span class="kshort">\u00d7 ${k}</span>`;
   }
   $('scoring').textContent = `Target time ${fmt(Logic.par(P))}. Each extra hoop adds ${c.extraStar}s, each reveal ${c.reveal}s, each hint ${c.hint}s.`;
 }
@@ -392,6 +411,9 @@ function win() {
   const fromPick = lastOpts && lastOpts.source === 'pick';
   $('winPick').hidden = !fromPick;
   if (fromPick) renderWinPick();
+  // The daily is one board a day, so "another one" and "menu" would be the same
+  // button twice. Offer it once.
+  $('winMenu').hidden = !!P.daily;
   if (P.daily) $('winNew').textContent = 'Back to menu'; else if (!fromPick) $('winNew').textContent = 'Another one';
   if (P.daily) { try { localStorage.setItem(NSKEY + 'daily-' + P.daily, JSON.stringify({ final: r.final, time: elapsed })); } catch (e) {} }
   renderDev();

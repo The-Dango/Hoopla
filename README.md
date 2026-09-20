@@ -190,9 +190,18 @@ Two screens exist, never both at once.
 (four rungs plus board type with Random as default), Let me pick (every raw dial, Blank
 included), and a gear for settings. A Resume button appears when a puzzle is in progress.
 
+The gear appears on every screen and goes straight to settings. The gear again, or Back,
+returns to exactly where it was pressed — a particular picker view, or the board mid-puzzle
+with the clock picked up where it left off, since opening settings stops it.
+
+A finished daily offers one way onward rather than two, because "another one" and "menu"
+would both be the menu: there is only one daily a day.
+
 **Board** — header, board, and five buttons: Undo, Clear, Hint, Check, Give up. The header
-carries the board's title, a chip showing how many hoops each colour holds (hidden on Blank
-boards, which have no colours), and the timer. The puzzle code sits under the board as a
+carries the board's title, a chip reading "N per colour" (hidden on Blank boards, which have
+no colours; shortened to "× N" below 360px), the timer, and the gear. The chip draws its hoop
+in the colour a hoop has while the puzzle is unsolved rather than the gold of a finished one,
+since it is a reminder of what to place. The puzzle code sits under the board as a
 tap-to-copy chip. Closing the tab pauses automatically. Keyboard: H hint, C check, U undo,
 Cmd+Z undo, Esc give up.
 
