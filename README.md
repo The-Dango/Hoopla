@@ -288,6 +288,15 @@ Caveat: a code only reproduces a board as long as the generator itself doesn't c
 anything shipped, generate boards ahead of time and store the finished puzzle rather than
 relying on the code.
 
+There is a second caveat, and it is the one that matters for a shared daily. `build` runs
+generation attempts against a wall clock, so a device slow enough to get through fewer of
+them can settle for a different board. On cheap boards this never happens: 120 easy 6×6
+seeds gave identical results whether the budget was 1200ms or 1ms, because the builder is
+satisfied long before the clock matters. On expensive ones it does — of 8 big two-hoop hard
+seeds, 2 produced a different board on a starved budget, and graded **medium** instead of
+hard. Saturday's daily is exactly that setup. Serving pre-generated boards removes this; so
+would making the builder stop on a fixed attempt count rather than a time budget.
+
 ## Data format
 
 `Logic.toJSON(P)` / `Logic.fromJSON(o)` round-trip a puzzle as plain JSON: width, height,
@@ -327,7 +336,8 @@ rebuilds the exact board, the stamp says which generator built it.
 - No accounts, so nothing follows a player between devices.
 - The daily is the same board for everyone **only within one build**, since each device
   generates it. Two testers on different builds can get different boards. Timezone is no
-  longer a factor: the rollover is midnight New York for everyone.
+  longer a factor: the rollover is midnight New York for everyone. On the hardest boards a
+  slow device can also land on a different board entirely — see the puzzle code caveats.
 - The rollover still trusts the device clock, so someone who sets their clock forward can
   play ahead. Not worth solving before the backend does it properly.
 
