@@ -502,7 +502,10 @@ function colorRegions() {
   for (let c = 0; c < W * H; c++) { if (region[c] < 0) continue; const x = c % W;
     if (x < W - 1 && region[c + 1] >= 0 && region[c + 1] !== region[c]) { adj[region[c]].add(region[c + 1]); adj[region[c + 1]].add(region[c]); }
     if (c + W < W * H && region[c + W] >= 0 && region[c + W] !== region[c]) { adj[region[c]].add(region[c + W]); adj[region[c + W]].add(region[c]); } }
-  const order = [...Array(R).keys()].sort((a, b) => adj[b].size - adj[a].size), off = Math.floor(Math.random() * 10);
+  // The palette is shuffled per board so the same shape is not always the same
+  // colour — except in the tutorial, which is the one board everybody shares.
+  const order = [...Array(R).keys()].sort((a, b) => adj[b].size - adj[a].size);
+  const off = tutorial ? 0 : Math.floor(Math.random() * 10);
   colors = new Array(R).fill(-1);
   for (const g of order) { const used = new Set([...adj[g]].map(o => colors[o]));
     for (let i = 0; i < 10; i++) { const c = (i + off + g * 3) % 10; if (!used.has(c)) { colors[g] = c; break; } }

@@ -222,6 +222,10 @@ third: someone who declined a helper and then breaks that rule is exactly who th
 for. Those breaks do not count towards the real game's tally, so the reminders met later are
 unaffected.
 
+Everyone gets the same tutorial, down to the colours: the board is a literal in the source,
+and `colorRegions` skips its usual palette shuffle when the tutorial is running, so two
+people comparing notes are looking at exactly the same picture.
+
 The board is one the generator made, then frozen into `TUT_BOARD`. Building it fresh from a
 fixed seed does not give the same puzzle twice — the builder runs attempts against a wall
 clock, so a slower machine gets through fewer of them and a different candidate wins. It was
