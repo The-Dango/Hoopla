@@ -1427,25 +1427,41 @@ function drawHoop(parent, X, Y, state) { // state: 'normal' | 'wrong' | 'win'
   el('path', { d: 'M-11.4 -8a14.6 14.6 0 0 1 6.6 -5.2', stroke: '#fff', 'stroke-width': 2.6, 'stroke-linecap': 'round', fill: 'none', opacity: .8 }, g);
   return g;
 }
-function drawX(parent, X, Y, opacity) {
-  el('path', { d: `M${X - 8} ${Y - 8}l16 16M${X + 8} ${Y - 8}l-16 16`, stroke: 'var(--dot)', 'stroke-width': 3.4,
+function drawX(parent, X, Y, opacity, colour) {
+  el('path', { d: `M${X - 8} ${Y - 8}l16 16M${X + 8} ${Y - 8}l-16 16`, stroke: colour || 'var(--dot)', 'stroke-width': 3.4,
     'stroke-linecap': 'round', opacity }, parent);
 }
 function analyse() {
   const { W, H, region, rowT, colT, k, R } = P;
   const rc = new Array(H).fill(0), cc = new Array(W).fill(0), gc = new Array(R).fill(0), bad = new Set();
-  for (let c = 0; c < W * H; c++) if (marks[c] === STAR) { rc[(c / W) | 0]++; cc[c % W]++; gc[region[c]]++; }
+  // Free cells: still empty, and not already blanked by a helper. A unit that can
+  // no longer reach its count is as broken as one that has overshot it.
+  const ro = new Array(H).fill(0), co = new Array(W).fill(0), go = new Array(R).fill(0);
+  for (let c = 0; c < W * H; c++) { if (!P.mask[c]) continue;
+    if (marks[c] === STAR) { rc[(c / W) | 0]++; cc[c % W]++; gc[region[c]]++; }
+    else if (marks[c] === EMPTY && !autoSet.has(c)) { ro[(c / W) | 0]++; co[c % W]++; go[region[c]]++; } }
   for (let c = 0; c < W * H; c++) if (marks[c] === STAR) { const x = c % W, y = (c / W) | 0;
     for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { if (!dx && !dy) continue; const nx = x + dx, ny = y + dy;
       if (nx >= 0 && ny >= 0 && nx < W && ny < H && marks[ny * W + nx] === STAR) bad.add(c); }
     if (rc[y] > rowT[y] || cc[x] > colT[x] || gc[region[c]] > k) bad.add(c); }
   let done = bad.size === 0; for (let y = 0; y < H; y++) if (rc[y] !== rowT[y]) done = false;
   for (let x = 0; x < W; x++) if (cc[x] !== colT[x]) done = false; for (let g = 0; g < R; g++) if (gc[g] !== k) done = false;
-  return { rc, cc, bad, done };
+  const starvedRow = y => rc[y] + ro[y] < rowT[y], starvedCol = x => cc[x] + co[x] < colT[x],
+        starvedReg = g => gc[g] + go[g] < k;
+  const rowBad = [], colBad = [];
+  for (let y = 0; y < H; y++) rowBad[y] = rc[y] > rowT[y] || starvedRow(y);
+  for (let x = 0; x < W; x++) colBad[x] = cc[x] > colT[x] || starvedCol(x);
+  // The X's doing the starving are what the player can take back, so name them.
+  const badX = new Set();
+  for (let c = 0; c < W * H; c++) { if (!P.mask[c] || marks[c] !== DOT) continue;
+    if (starvedRow((c / W) | 0) || starvedCol(c % W) || starvedReg(region[c])) badX.add(c); }
+  return { rc, cc, bad, badX, rowBad, colBad, done };
 }
 function draw(winAnim) {
-  const { W, H, rowT, colT } = P, a = analyse();
+  const { W, H, rowT, colT } = P;
+  // analyse() reads autoSet, so it has to be this move's set and not the last one's.
   autoSet = Logic.autoBlanks(P, marks, { around: settings.auto, region: settings.fillRegion, line: settings.fillLine });
+  const a = analyse();
   gMarks.innerHTML = ''; gClues.innerHTML = ''; gShade.innerHTML = '';
   // a row or column with nothing left to decide fades back a little
   const settled = (cells) => { let any = false;
@@ -1459,20 +1475,20 @@ function draw(winAnim) {
       el('rect', { x: M + x * CS, y: M + y * CS, width: CS, height: CS, fill: 'var(--line)', opacity: .09 }, gShade); }
   for (let c = 0; c < W * H; c++) { if (!P.mask[c]) continue; const X = M + (c % W) * CS + CS / 2, Y = M + ((c / W) | 0) * CS + CS / 2;
     if (marks[c] === START) drawX(gMarks, X, Y, .3);
-    else if (marks[c] === DOT) drawX(gMarks, X, Y, .9);
+    else if (marks[c] === DOT) drawX(gMarks, X, Y, .9, settings.err && a.badX.has(c) ? 'var(--bad)' : null);
     else if (marks[c] === EMPTY && autoSet.has(c)) drawX(gMarks, X, Y, .45);
     else if (marks[c] === STAR) {
       const badS = settings.err && a.bad.has(c), winState = solved && !revealed;
       if (givenSet.has(c) && !winState) el('circle', { cx: X, cy: Y, r: 20, fill: 'none', stroke: 'var(--ink)', 'stroke-width': 1.5, opacity: .3 }, gMarks);
       const g = drawHoop(gMarks, X, Y, badS ? 'wrong' : winState ? 'win' : 'normal');
       if (winAnim) { g.classList.add('star-win'); g.style.animationDelay = (((c % W) + ((c / W) | 0)) * 45) + 'ms'; } } }
-  const clue = (x, y, t, n) => { const over = n > t, full = n === t;
+  const clue = (x, y, t, n, broken) => { const over = n > t, full = n === t;
     el('text', { x, y, 'text-anchor': 'middle', 'dominant-baseline': 'central', 'font-size': 17, 'font-weight': 700,
-      fill: settings.err && over ? 'var(--bad)' : 'var(--muted)', opacity: full && !over ? .35 : 1 }, gClues).textContent = t; };
+      fill: settings.err && broken ? 'var(--bad)' : 'var(--muted)', opacity: full && !over ? .35 : 1 }, gClues).textContent = t; };
   for (let y = 0; y < H; y++) if (P.mask.slice(y * W, y * W + W).some(Boolean)) {
-    clue(M / 2, M + y * CS + CS / 2, rowT[y], a.rc[y]); clue(M + W * CS + M / 2, M + y * CS + CS / 2, rowT[y], a.rc[y]); }
+    clue(M / 2, M + y * CS + CS / 2, rowT[y], a.rc[y], a.rowBad[y]); clue(M + W * CS + M / 2, M + y * CS + CS / 2, rowT[y], a.rc[y], a.rowBad[y]); }
   for (let x = 0; x < W; x++) if (P.mask.some((m, i) => m && i % W === x)) {
-    clue(M + x * CS + CS / 2, M / 2, colT[x], a.cc[x]); clue(M + x * CS + CS / 2, M + H * CS + M / 2, colT[x], a.cc[x]); }
+    clue(M + x * CS + CS / 2, M / 2, colT[x], a.cc[x], a.colBad[x]); clue(M + x * CS + CS / 2, M + H * CS + M / 2, colT[x], a.cc[x], a.colBad[x]); }
   drawHint();
   if (a.done && !solved && !tutorial) win();
 }
