@@ -199,7 +199,45 @@ function tutNext() { tutorial.i++; showStage(); }
 function tutProgress() {
   if (!tutorial) return;
   const st = STAGES[tutorial.i];
+  if (!tutSecondThoughts()) return; // a wrong hoop is worth saying so at any stage
   if (st && st.done && st.done()) { if (tutorial.i === STAGES.length - 1) return tutDone(); tutNext(); }
+}
+// The first unit that can no longer be filled: its hoops plus the squares still
+// able to take one fall short of its count. Squares are counted as blocked for
+// every reason at once, whatever helpers the player has switched on, because
+// this is about what is true on the board rather than what is drawn on it.
+function tutStranded() {
+  const blocked = Logic.autoBlanks(P, marks, { around: true, region: true, line: true });
+  for (const u of P.units) {
+    let hoops = 0, open = 0;
+    for (const c of u.cells) {
+      if (marks[c] === STAR) hoops++;
+      else if (marks[c] === EMPTY && !blocked.has(c)) open++; }
+    if (hoops + open < u.target) return { what: u.kind === 'region' ? 'colour' : u.kind, cells: u.cells }; }
+  return null;
+}
+// Only the tutorial board is frozen with a known solution, so only here can the
+// game tell a legal-but-wrong hoop from a right one for free. In a real game
+// that answer is what Check is for, and it costs time; none of this runs there.
+// Returns false while a wrong hoop is down, which also holds the finish back.
+function tutSecondThoughts() {
+  const sol = new Set(P.solution), wrong = [];
+  for (let c = 0; c < marks.length; c++) if (marks[c] === STAR && !sol.has(c)) wrong.push(c);
+  if (!wrong.length) { if (tutorial.said) { tutorial.said = null; showStage(); } return true; }
+  const key = wrong.join(',');
+  if (tutorial.said === key) return false;
+  if (analyse().bad.size) return false; // a rule is actually broken: the reminder already covers it
+  tutorial.said = key;
+  const s = tutStranded(), ring = s ? s.cells.filter(c => marks[c] !== STAR) : [];
+  curHint = ring.length ? { targets: ring, cells: [...s.cells, ...wrong], kind: 'mistake' }
+                        : { targets: wrong, cells: wrong, kind: 'mistake' };
+  draw();
+  showBar(ring.length ? `Hold on \u2014 that leaves the ringed ${s.what} nowhere to put a hoop.`
+                      : 'Hold on \u2014 that is not where this one goes.',
+    'bad', [['Take it back', true, () => { undo(); showStage(); }], ['Leave it', false, closeBar]],
+    ring.length ? 'No rule is broken yet, which is why nothing lit up \u2014 the board simply cannot be finished from here.'
+                : 'Every colour, every row and every column still needs exactly one hoop.');
+  return false;
 }
 function tutDone() {
   curHint = null; solved = true; clearInterval(timerId); draw(true);
@@ -215,7 +253,7 @@ function tutDone() {
   $('win').classList.add('show');
 }
 function startTutorial() {
-  tutorial = { i: 0, target: -1 };
+  tutorial = { i: 0, target: -1, said: null };
   lastOpts = { opts: { shape: 'square', k: 1, size: 0, difficulty: 'easy' }, key: null, source: 'own' };
   showGame(); clearSaved(); closeBar();
   $('game').classList.add('tut', 'guided');
