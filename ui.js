@@ -643,38 +643,28 @@ function showBar(text, tone, buttons, note) {
   $('hintText').textContent = text; $('barNote').textContent = note || '';
   const box = $('barBtns'); box.innerHTML = '';
   for (const [label, primary, fn] of buttons) { const b = document.createElement('button'); b.textContent = label; if (primary) b.className = 'primary'; b.onclick = fn; box.appendChild(b); }
-  floatBar(bar);
+  revealBar(bar);
 }
-// A big board pushes the toolbar past the bottom of the screen, and the bar sits
-// below that again, so the answer to a Hint or a Check arrived out of sight. The
-// className reset above has already dropped .floating, so this measures where the
-// bar would land in the flow and only lifts it when that is off-screen.
-function floatBar(bar) {
-  if (bar.getBoundingClientRect().bottom > window.innerHeight) bar.classList.add('floating');
-  keepHintVisible(bar);
+// The bar sits above the board, so opening one pushes the board down and that
+// movement is itself the signal that something appeared. It only reads as a
+// signal if the bar is on screen, which on a big board it will not be: the press
+// came from the toolbar, far below. So bring it into view — together with the
+// cells the hint is ringing when the two fit, and otherwise the bar alone, which
+// leaves the board below it to scroll down through.
+function revealBar(bar) {
+  const br = bar.getBoundingClientRect();
+  let top = br.top, bottom = br.bottom;
+  const cells = P && curHint && (curHint.targets || curHint.cells);
+  if (cells && cells.length) {
+    const svg = $('board'), r = svg.getBoundingClientRect(), sy = r.height / svg.viewBox.baseVal.height;
+    for (const c of cells) bottom = Math.max(bottom, r.top + (M + (((c / P.W) | 0) + 1) * CS) * sy);
+  }
+  const lo = 12, hi = window.innerHeight - 12;
+  if (bottom - top <= hi - lo) {
+    if (bottom > hi) window.scrollBy(0, bottom - hi);
+    else if (top < lo) window.scrollBy(0, top - lo);
+  } else window.scrollBy(0, top - lo);
 }
-// A bar pinned to the bottom can cover the very cells the hint is pointing at,
-// and on a board this tall the ringed cell can equally be off the top. Bring it
-// into the strip that is actually in view, between the top and the bar.
-function keepHintVisible(bar) {
-  if (!bar.classList.contains('floating') || !P || !curHint) return;
-  const cells = curHint.targets || curHint.cells; if (!cells || !cells.length) return;
-  const svg = $('board'), r = svg.getBoundingClientRect(), sy = r.height / svg.viewBox.baseVal.height;
-  let top = Infinity, bottom = -Infinity;
-  for (const c of cells) { const gy = (c / P.W) | 0;
-    top = Math.min(top, r.top + (M + gy * CS) * sy);
-    bottom = Math.max(bottom, r.top + (M + (gy + 1) * CS) * sy); }
-  const lo = 12, hi = bar.getBoundingClientRect().top - 12;
-  // Scrolling down to clear the bar never goes so far that the top of the run leaves the screen.
-  if (bottom > hi) window.scrollBy(0, Math.min(bottom - hi, Math.max(top - lo, 0)));
-  else if (top < lo) window.scrollBy(0, top - lo);
-}
-// Turning the phone sideways changes which of those two cases the bar is in, so
-// the decision has to be made again rather than kept from when it was opened.
-window.addEventListener('resize', () => {
-  const bar = $('hintBar'); if (bar.hidden) return;
-  bar.classList.remove('floating'); floatBar(bar);
-});
 function closeBar() { curHint = null; $('hintBar').hidden = true; if (gDim) gDim.innerHTML = ''; if (gHint) gHint.innerHTML = ''; }
 function showHint() {
   if (!P || solved) return;

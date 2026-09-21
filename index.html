@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Hoopla</title>
-<meta name="build" content="0.12.2 · 2026-09-20">
+<meta name="build" content="0.12.3 · 2026-09-20">
 <meta name="description" content="A logic puzzle game in the family of Sudoku, Star Battle and Queens. Drop hoops so every region, row and column holds the right number, and no two hoops ever touch.">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
@@ -143,11 +143,6 @@ details.dev summary { cursor: pointer; font-weight: 600; min-height: 32px; }
 .bartext { flex: 1 1 240px; } .bar p { margin: 0; }
 .barnote { font-size: .85rem; color: var(--muted); margin-top: 4px !important; } .barnote:empty { display: none; }
 .barbtns { display: flex; gap: 8px; flex-wrap: wrap; }
-/* On a big board the toolbar sits well below the fold, so a result bar left in
-   the flow lands where nobody can see it. showBar lifts it over the board. */
-.bar.floating { position: fixed; left: 50%; transform: translateX(-50%); z-index: 25;
-  bottom: calc(12px + env(safe-area-inset-bottom, 0px)); width: min(636px, calc(100vw - 24px));
-  box-shadow: 0 10px 40px rgba(0,0,0,.45); }
 .overlay { position: fixed; inset: 0; z-index: 30; display: none; align-items: center; justify-content: center;
   padding: 16px; overflow-y: auto; overscroll-behavior: contain; background: rgba(10,14,22,.35); }
 .overlay.show { display: flex; }
@@ -292,6 +287,7 @@ details.dev summary { cursor: pointer; font-weight: 600; min-height: 32px; }
     <span class="timer" id="timer">0:00</span>
     <button class="gear" id="gameGear" aria-label="Settings" title="Settings">⚙</button>
   </div>
+  <div class="bar" id="hintBar" hidden><div class="bartext"><p id="hintText"></p><p class="barnote" id="barNote"></p></div><div class="barbtns" id="barBtns"></div></div>
   <div class="boardbox">
     <svg id="board" role="application" aria-label="Puzzle board"></svg>
     <div class="busy" id="busy">Building a puzzle…</div>
@@ -318,7 +314,6 @@ details.dev summary { cursor: pointer; font-weight: 600; min-height: 32px; }
     <button id="quit">Give up</button>
   </div>
   <div class="counts" id="hintCount"></div>
-  <div class="bar" id="hintBar" hidden><div class="bartext"><p id="hintText"></p><p class="barnote" id="barNote"></p></div><div class="barbtns" id="barBtns"></div></div>
   <p class="note" id="note"></p>
   <p class="help" id="controls">Tap a square once for an X, twice for a hoop. Drag to X out a run.</p>
   <p class="help" id="scoring"></p>
