@@ -298,7 +298,7 @@ function miniBoard(spec) {
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
     const c = y * W + x, X = pad + x * MC, Y = pad + y * MC;
     el('rect', { x: X, y: Y, width: MC, height: MC,
-      fill: region ? `var(--r${region[c]})` : 'var(--panel)' }, cells);
+      fill: region ? `var(--r${region[c]})` : 'var(--blank)' }, cells);
     const g = region ? region[c] : 0;
     const rOf = (xx, yy) => (xx < 0 || yy < 0 || xx >= W || yy >= H) ? -2 : (region ? region[yy * W + xx] : 0);
     [[rOf(x + 1, y), `M${X + MC} ${Y}v${MC}`], [rOf(x, y + 1), `M${X} ${Y + MC}h${MC}`],
@@ -559,7 +559,7 @@ function buildBoard() {
   let thin = '', thick = '';
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const c = y * W + x; if (!mask[c]) continue;
     const X = M + x * CS, Y = M + y * CS;
-    el('rect', { x: X, y: Y, width: CS, height: CS, fill: P.regions ? `var(--r${colors[region[c]]})` : 'var(--panel)', class: 'cell' }, gCells);
+    el('rect', { x: X, y: Y, width: CS, height: CS, fill: P.regions ? `var(--r${colors[region[c]]})` : 'var(--blank)', class: 'cell' }, gCells);
     const g = region[c], rOf = (xx, yy) => (xx < 0 || yy < 0 || xx >= W || yy >= H || !mask[yy * W + xx]) ? -2 : region[yy * W + xx];
     const edges = [[rOf(x + 1, y), `M${X + CS} ${Y}v${CS}`], [rOf(x, y + 1), `M${X} ${Y + CS}h${CS}`], [rOf(x - 1, y), `M${X} ${Y}v${CS}`], [rOf(x, y - 1), `M${X} ${Y}h${CS}`]];
     edges.forEach(([o, d], i) => { if (o === g) { if (i < 2) thin += d; } else if (i < 2 || o === -2) thick += d; });

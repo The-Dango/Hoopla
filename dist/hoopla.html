@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Hoopla</title>
-<meta name="build" content="0.12.4 · 2026-09-20">
+<meta name="build" content="0.12.5 · 2026-09-20">
 <meta name="description" content="A logic puzzle game in the family of Sudoku, Star Battle and Queens. Drop hoops so every region, row and column holds the right number, and no two hoops ever touch.">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
@@ -29,17 +29,20 @@
   padding-bottom: env(safe-area-inset-bottom, 0px);
   --bg: #E4E9EF; --panel: #F4F6F9; --ink: #1C2541; --muted: #5B6480; --line: #1C2541;
   --pri: #1C2541; --priink: #E4E9EF; --prisub: rgba(255,255,255,.75);
+  --blank: #F4F6F9;
   --thin: rgba(28,37,65,.22); --gold: #D4951A; --bad: #C8323C; --ok: #2F7D5B; --dot: #1C2541; --startdot: rgba(28,37,65,.2); --o: #2FA8E0; --chip: rgba(28,37,65,.07); --chipedge: rgba(28,37,65,.14); --chipon: #5B6480;
   --r0:#F4C4B3; --r1:#F1DE9C; --r2:#C5E1AE; --r3:#A7D6D4; --r4:#B8C7EE; --r5:#D5C0EC; --r6:#F0BAD2; --r7:#DCD4C1; --r8:#BCDFF2; --r9:#E9C39C;
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
   --bg: #141A26; --panel: #1C2433; --ink: #E8ECF4; --muted: #9AA3BA; --line: #0B0F17;
   --pri: #2B4C6F; --priink: #E8ECF4; --prisub: rgba(232,236,244,.82);
+  --blank: #566076;
   --thin: rgba(0,0,0,.35); --gold: #F2B84B; --bad: #FF6B72; --ok: #6FD3A2; --dot: #0E1320; --startdot: rgba(10,14,22,.38); --o: #3FB6EC; --chip: rgba(255,255,255,.07); --chipedge: rgba(255,255,255,.14); --chipon: #8B95AF;
   --r0:#8A5A4B; --r1:#857535; --r2:#56753F; --r3:#3E7270; --r4:#4A5B8C; --r5:#6B528A; --r6:#8A4D68; --r7:#6E6754; --r8:#3F6D86; --r9:#8A6440; } }
 :root[data-theme="dark"] {
   --bg: #141A26; --panel: #1C2433; --ink: #E8ECF4; --muted: #9AA3BA; --line: #0B0F17;
   --pri: #2B4C6F; --priink: #E8ECF4; --prisub: rgba(232,236,244,.82);
+  --blank: #566076;
   --thin: rgba(0,0,0,.35); --gold: #F2B84B; --bad: #FF6B72; --ok: #6FD3A2; --dot: #0E1320; --startdot: rgba(10,14,22,.38); --o: #3FB6EC; --chip: rgba(255,255,255,.07); --chipedge: rgba(255,255,255,.14); --chipon: #8B95AF;
   --r0:#8A5A4B; --r1:#857535; --r2:#56753F; --r3:#3E7270; --r4:#4A5B8C; --r5:#6B528A; --r6:#8A4D68; --r7:#6E6754; --r8:#3F6D86; --r9:#8A6440; }
 html { scroll-padding-top: env(safe-area-inset-top, 0px); }
@@ -1186,7 +1189,7 @@ function miniBoard(spec) {
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
     const c = y * W + x, X = pad + x * MC, Y = pad + y * MC;
     el('rect', { x: X, y: Y, width: MC, height: MC,
-      fill: region ? `var(--r${region[c]})` : 'var(--panel)' }, cells);
+      fill: region ? `var(--r${region[c]})` : 'var(--blank)' }, cells);
     const g = region ? region[c] : 0;
     const rOf = (xx, yy) => (xx < 0 || yy < 0 || xx >= W || yy >= H) ? -2 : (region ? region[yy * W + xx] : 0);
     [[rOf(x + 1, y), `M${X + MC} ${Y}v${MC}`], [rOf(x, y + 1), `M${X} ${Y + MC}h${MC}`],
@@ -1447,7 +1450,7 @@ function buildBoard() {
   let thin = '', thick = '';
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const c = y * W + x; if (!mask[c]) continue;
     const X = M + x * CS, Y = M + y * CS;
-    el('rect', { x: X, y: Y, width: CS, height: CS, fill: P.regions ? `var(--r${colors[region[c]]})` : 'var(--panel)', class: 'cell' }, gCells);
+    el('rect', { x: X, y: Y, width: CS, height: CS, fill: P.regions ? `var(--r${colors[region[c]]})` : 'var(--blank)', class: 'cell' }, gCells);
     const g = region[c], rOf = (xx, yy) => (xx < 0 || yy < 0 || xx >= W || yy >= H || !mask[yy * W + xx]) ? -2 : region[yy * W + xx];
     const edges = [[rOf(x + 1, y), `M${X + CS} ${Y}v${CS}`], [rOf(x, y + 1), `M${X} ${Y + CS}h${CS}`], [rOf(x - 1, y), `M${X} ${Y}v${CS}`], [rOf(x, y - 1), `M${X} ${Y}h${CS}`]];
     edges.forEach(([o, d], i) => { if (o === g) { if (i < 2) thin += d; } else if (i < 2 || o === -2) thick += d; });
