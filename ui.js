@@ -643,13 +643,26 @@ function draw(winAnim) {
       if (givenSet.has(c) && !winState) el('circle', { cx: X, cy: Y, r: 20, fill: 'none', stroke: 'var(--ink)', 'stroke-width': 1.5, opacity: .3 }, gMarks);
       const g = drawHoop(gMarks, X, Y, badS ? 'wrong' : winState ? 'win' : 'normal');
       if (winAnim) { g.classList.add('star-win'); g.style.animationDelay = (((c % W) + ((c / W) | 0)) * 45) + 'ms'; } } }
-  const clue = (x, y, t, n, broken) => { const over = n > t, full = n === t;
+  // On a shape that does not reach the edge (octagon corners, carved bays) a
+  // clue can sit several squares from where its row or column starts, so a
+  // dotted lead runs across the gap, in the clue's own colour.
+  const clue = (x, y, t, n, broken, lead) => { const over = n > t, full = n === t;
+    const fill = settings.err && broken ? 'var(--bad)' : 'var(--muted)', opacity = full && !over ? .35 : 1;
+    if (lead) el('line', { ...lead, stroke: fill, 'stroke-width': 2.4, 'stroke-linecap': 'round',
+      'stroke-dasharray': '0 8', opacity: opacity * .5 }, gClues);
     el('text', { x, y, 'text-anchor': 'middle', 'dominant-baseline': 'central', 'font-size': 17, 'font-weight': 700,
-      fill: settings.err && broken ? 'var(--bad)' : 'var(--muted)', opacity: full && !over ? .35 : 1 }, gClues).textContent = t; };
-  for (let y = 0; y < H; y++) if (P.mask.slice(y * W, y * W + W).some(Boolean)) {
-    clue(M / 2, M + y * CS + CS / 2, rowT[y], a.rc[y], a.rowBad[y]); clue(M + W * CS + M / 2, M + y * CS + CS / 2, rowT[y], a.rc[y], a.rowBad[y]); }
-  for (let x = 0; x < W; x++) if (P.mask.some((m, i) => m && i % W === x)) {
-    clue(M + x * CS + CS / 2, M / 2, colT[x], a.cc[x], a.colBad[x]); clue(M + x * CS + CS / 2, M + H * CS + M / 2, colT[x], a.cc[x], a.colBad[x]); }
+      fill, opacity }, gClues).textContent = t; };
+  const GAP = 12; // keep the dots clear of the number and of the first square
+  for (let y = 0; y < H; y++) {
+    const row = P.mask.slice(y * W, y * W + W), f = row.indexOf(true), l = row.lastIndexOf(true); if (f < 0) continue;
+    const Y = M + y * CS + CS / 2, L = M / 2, R = M + W * CS + M / 2;
+    clue(L, Y, rowT[y], a.rc[y], a.rowBad[y], f && { x1: L + GAP, y1: Y, x2: M + f * CS - GAP, y2: Y });
+    clue(R, Y, rowT[y], a.rc[y], a.rowBad[y], l < W - 1 && { x1: R - GAP, y1: Y, x2: M + (l + 1) * CS + GAP, y2: Y }); }
+  for (let x = 0; x < W; x++) {
+    const col = Array.from({ length: H }, (_, y) => P.mask[y * W + x]), f = col.indexOf(true), l = col.lastIndexOf(true); if (f < 0) continue;
+    const X = M + x * CS + CS / 2, T = M / 2, B = M + H * CS + M / 2;
+    clue(X, T, colT[x], a.cc[x], a.colBad[x], f && { x1: X, y1: T + GAP, x2: X, y2: M + f * CS - GAP });
+    clue(X, B, colT[x], a.cc[x], a.colBad[x], l < H - 1 && { x1: X, y1: B - GAP, x2: X, y2: M + (l + 1) * CS + GAP }); }
   drawHint();
   if (a.done && !solved && !tutorial) win();
 }
