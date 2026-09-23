@@ -648,22 +648,28 @@ function draw(winAnim) {
       fill: settings.err && broken ? 'var(--bad)' : 'var(--muted)', opacity: full && !over ? .35 : 1 }, gClues).textContent = t; };
   // Where a row or column crosses squares that are not on the board (octagon
   // corners, carved bays, holes), faint dots carry it across, so the eye can
-  // follow a clue to its squares. One weight everywhere; only red when broken.
-  const GAP = 12; // keep the dots clear of the numbers and of the squares
+  // follow a clue to its squares. Every dot sits on one lattice through the
+  // square centres, so a row and a column crossing share a dot rather than
+  // stacking two, and each colour is one path so nothing is drawn twice.
+  // One weight everywhere; red only when broken.
+  const GAP = 12, STEP = CS / 5, dots = new Map(); // "x,y" -> broken
   const leads = (on, n, broken, at) => {
     for (let i = 0; i < n; i++) { if (on[i]) continue; let j = i; while (j + 1 < n && !on[j + 1]) j++;
       const a0 = i === 0 ? M / 2 + GAP : M + i * CS + GAP, a1 = j === n - 1 ? M + n * CS + M / 2 - GAP : M + (j + 1) * CS - GAP;
-      if (a1 > a0) el('line', { ...at(a0, a1), stroke: settings.err && broken ? 'var(--bad)' : 'var(--muted)', 'stroke-width': 2.4,
-        'stroke-linecap': 'round', 'stroke-dasharray': '0 8', opacity: .2 }, gClues);
+      for (let t = M + CS / 2 + Math.ceil((a0 - M - CS / 2) / STEP) * STEP; t <= a1; t += STEP) {
+        const k = at(t); dots.set(k, dots.get(k) || (settings.err && broken)); }
       i = j; } };
   for (let y = 0; y < H; y++) {
     const row = P.mask.slice(y * W, y * W + W); if (!row.some(Boolean)) continue; const Y = M + y * CS + CS / 2;
-    leads(row, W, a.rowBad[y], (x1, x2) => ({ x1, x2, y1: Y, y2: Y }));
+    leads(row, W, a.rowBad[y], t => `${t},${Y}`);
     clue(M / 2, Y, rowT[y], a.rc[y], a.rowBad[y]); clue(M + W * CS + M / 2, Y, rowT[y], a.rc[y], a.rowBad[y]); }
   for (let x = 0; x < W; x++) {
     const col = Array.from({ length: H }, (_, y) => P.mask[y * W + x]); if (!col.some(Boolean)) continue; const X = M + x * CS + CS / 2;
-    leads(col, H, a.colBad[x], (y1, y2) => ({ y1, y2, x1: X, x2: X }));
+    leads(col, H, a.colBad[x], t => `${X},${t}`);
     clue(X, M / 2, colT[x], a.cc[x], a.colBad[x]); clue(X, M + H * CS + M / 2, colT[x], a.cc[x], a.colBad[x]); }
+  for (const red of [false, true]) { let d = '';
+    for (const [k, b] of dots) if (b === red) d += `M${k}h0`;
+    if (d) el('path', { d, stroke: red ? 'var(--bad)' : 'var(--muted)', 'stroke-width': 2.4, 'stroke-linecap': 'round', opacity: .2, class: 'lead' }, gClues); }
   drawHint();
   if (a.done && !solved && !tutorial) win();
 }

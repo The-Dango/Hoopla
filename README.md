@@ -139,7 +139,8 @@ helpers on shows where it reaches rather than only reddening the clue.
 Wherever a row or column crosses squares that are not on the board (octagon corners, carved
 bays, holes in the middle), faint dots carry it across so a clue can be followed to its
 squares. They are one weight everywhere, whatever the clue, and only change colour, to red,
-when that row or column is broken.
+when that row or column is broken. Every dot sits on one lattice through the square centres,
+so where a row and a column cross they share a dot instead of stacking two.
 
 When a hoop lands on a square a helper would have blanked, the game names the rule that
 square breaks and offers the helper:
