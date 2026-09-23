@@ -390,14 +390,20 @@ function ownOpts() { return { shape: settings.shape, k: settings.shape === 'blan
   difficulty: settings.difficulty }; }
 function pickOpts() { return Logic.rungOptions(settings.rung, settings.pickShape); }
 function optsKey(o) { return JSON.stringify(o); }
+// "Another like this" after the daily: the daily's setup without its seed, so
+// a fresh board of the same kind. It is an ordinary puzzle, not a second daily.
+function likeOpts(o) { return { shape: o.shape, k: o.k, size: o.size, difficulty: o.difficulty, holes: !!o.holes }; }
+const likeSource = () => lastOpts && (lastOpts.source === 'daily' || lastOpts.source === 'like');
 function prefetch() { // build the likely next board quietly, in slices, while the player is busy
   if (building) return;
-  const view = $('viewOwn').hidden === false ? 'own' : 'pick';
-  const o = view === 'own' ? ownOpts() : { rung: settings.rung, pickShape: settings.pickShape };
+  // In a daily or a board like it, the next board is another like it.
+  const like = $('picker').hidden && likeSource();
+  const view = like ? 'like' : $('viewOwn').hidden === false ? 'own' : 'pick';
+  const o = like ? likeOpts(lastOpts.opts) : view === 'own' ? ownOpts() : { rung: settings.rung, pickShape: settings.pickShape };
   const key = optsKey(o);
   if (nextUp && nextKey === key) return;
   building = true;
-  const opts = view === 'own' ? o : pickOpts();
+  const opts = view === 'pick' ? pickOpts() : o;
   Logic.buildAsync(Engine, opts, p => { building = false; if (p) { nextUp = p; nextKey = key; } }, 8000);
 }
 function startPuzzle(opts, key, source) {
@@ -424,7 +430,7 @@ $('pickStart').onclick = () => startPuzzle(pickOpts(), optsKey({ rung: settings.
 $('ownStart').onclick = () => startPuzzle(ownOpts(), optsKey(ownOpts()), 'own');
 $('winNew').onclick = () => {
   if (tutorial) return showPicker('menu');
-  if (lastOpts && lastOpts.source === 'daily') return showPicker('menu');
+  if (likeSource()) { const o = likeOpts(lastOpts.opts); return startPuzzle(o, optsKey(o), 'like'); }
   if (lastOpts && lastOpts.source === 'pick') return startPuzzle(pickOpts(), optsKey({ rung: settings.rung, pickShape: settings.pickShape }), 'pick');
   return startPuzzle(ownOpts(), optsKey(ownOpts()), 'own');
 };
@@ -442,14 +448,14 @@ function pauseAndLeave() {
   if (!P || solved) return showPicker('menu');
   clearInterval(timerId);
   try { localStorage.setItem(SAVE, JSON.stringify({ P: Logic.toJSON(P), marks: Array.from(marks), elapsed,
-    hints, placements, shows, opts: lastOpts && lastOpts.opts, key: lastOpts && lastOpts.key })); } catch (e) {}
+    hints, placements, shows, opts: lastOpts && lastOpts.opts, key: lastOpts && lastOpts.key, source: lastOpts && lastOpts.source })); } catch (e) {}
   closeBar(); showPicker('menu');
 }
 $('resumeBtn').onclick = () => { const s = savedGame(); if (!s) return;
   showGame(); clearSaved();
   P = Logic.fromJSON(s.P); marks = Uint8Array.from(s.marks); givenSet = new Set(P.givens); history = [];
   solved = false; revealed = false; gaveUp = false; hints = s.hints || 0; placements = s.placements || 0; shows = s.shows || 0;
-  placedAt = new Map(); lastOpts = s.opts ? { opts: s.opts, key: s.key } : null;
+  placedAt = new Map(); lastOpts = s.opts ? { opts: s.opts, key: s.key, source: s.source } : null;
   colorRegions(); startTimer(s.elapsed || 0); buildBoard(); draw(); renderRules(); renderDev(); renderCounts(); renderNote();
 };
 window.addEventListener('pagehide', () => { if (P && !solved && !$('game').hidden) pauseAndLeave(); });
@@ -469,8 +475,8 @@ $('quit').onclick = () => {
       $('winTitle').textContent = 'Here it is';
       $('winScore').innerHTML = `<dd class="note">No score for a puzzle you gave up on. Take a look at how it fits together.</dd>`;
       $('winPick').hidden = true;
-      $('winMenu').hidden = !!P.daily;
-      $('winNew').textContent = P.daily ? 'Back to menu' : 'Another one';
+      $('winMenu').hidden = false;
+      $('winNew').textContent = P.daily ? 'Another like this' : 'Another one';
       $('win').classList.add('show');
     }],
     ['Keep playing', false, () => {}]]);
@@ -691,10 +697,9 @@ function win() {
   const fromPick = lastOpts && lastOpts.source === 'pick';
   $('winPick').hidden = !fromPick;
   if (fromPick) renderWinPick();
-  // The daily is one board a day, so "another one" and "menu" would be the same
-  // button twice. Offer it once.
-  $('winMenu').hidden = !!P.daily;
-  if (P.daily) $('winNew').textContent = 'Back to menu'; else if (!fromPick) $('winNew').textContent = 'Another one';
+  // There is only one daily a day, so its way onward is a fresh board of the same kind.
+  $('winMenu').hidden = false;
+  if (P.daily) $('winNew').textContent = 'Another like this'; else if (!fromPick) $('winNew').textContent = 'Another one';
   if (P.daily) { try { localStorage.setItem(NSKEY + 'daily-' + P.daily, JSON.stringify({ final: r.final, time: elapsed })); } catch (e) {} }
   renderDev();
   setTimeout(() => $('win').classList.add('show'), 700);

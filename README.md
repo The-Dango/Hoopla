@@ -259,8 +259,12 @@ The gear appears on every screen and goes straight to settings. The gear again, 
 returns to exactly where it was pressed — a particular picker view, or the board mid-puzzle
 with the clock picked up where it left off, since opening settings stops it.
 
-A finished daily offers one way onward rather than two, because "another one" and "menu"
-would both be the menu: there is only one daily a day.
+A finished daily, or one given up on, offers "Another like this" first and Menu second.
+There is only one daily a day, so the way onward is a fresh board with the daily's setup
+(shape, hoops per colour, size, difficulty, holes) but no seed. It is an ordinary puzzle:
+the daily stays done, and its "Another one" keeps building the same kind. It is built in
+the background while the daily is played, so Saturday's big board does not keep anyone
+waiting.
 
 **Board** — header, board, and five buttons: Undo, Clear, Hint, Check, Menu. The header
 carries the board's title, a chip reading "N per colour" (hidden on Blank boards, which have
