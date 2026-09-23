@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Hoopla</title>
-<meta name="build" content="0.12.5 · 2026-09-20">
+<meta name="build" content="0.12.6 · 2026-09-23">
 <meta name="description" content="A logic puzzle game in the family of Sudoku, Star Battle and Queens. Drop hoops so every region, row and column holds the right number, and no two hoops ever touch.">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
@@ -48,6 +48,8 @@
 html { scroll-padding-top: env(safe-area-inset-top, 0px); }
 *, *::before, *::after { box-sizing: inherit; }
 [hidden] { display: none !important; }
+/* A quick second tap is a second press, never a zoom. Pinch still zooms. */
+html { touch-action: manipulation; }
 body { margin: 0; background: var(--bg); color: var(--ink);
   font-family: "Bricolage Grotesque", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; font-size: 16px; line-height: 1.45; }
 h1 { font-size: 1.7rem; font-weight: 800; letter-spacing: -0.02em; margin: 0; line-height: 1.1; }
@@ -258,7 +260,7 @@ details.dev summary { cursor: pointer; font-weight: 600; min-height: 32px; }
       <dl class="costs">
         <dt>Check</dt><dd>Free. Says whether everything so far is right, never what's wrong.</dd>
         <dt>Hint</dt><dd>Finds the simplest next step and explains why. Adds time to your score.</dd>
-        <dt>Give up</dt><dd>Leave the board to come back to, or see how it fits together.</dd>
+        <dt>Menu</dt><dd>Save the board to come back to, or give up and see how it fits together.</dd>
       </dl>
       <p class="sub">Every puzzle has exactly one solution, and it never needs a guess.</p>
     </section>
@@ -314,7 +316,7 @@ details.dev summary { cursor: pointer; font-weight: 600; min-height: 32px; }
     <button id="clear">Clear</button>
     <button id="hint">Hint</button>
     <button id="check">Check</button>
-    <button id="quit">Give up</button>
+    <button id="quit">Menu</button>
   </div>
   <div class="counts" id="hintCount"></div>
   <p class="note" id="note"></p>

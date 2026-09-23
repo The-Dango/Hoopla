@@ -258,7 +258,6 @@ function startTutorial() {
   showGame(); clearSaved(); closeBar();
   $('game').classList.add('tut', 'guided');
   $('gameTitle').textContent = 'How to play';
-  $('quit').textContent = 'Leave';
   $('gameCode').hidden = true;
   $('note').textContent = '';
   $('win').classList.remove('show');
@@ -276,7 +275,6 @@ function startTutorial() {
 function endTutorial() {
   tutorial = null;
   $('game').classList.remove('tut', 'guided');
-  $('quit').textContent = 'Give up';
   $('gameCode').hidden = false;
 }
 
@@ -461,9 +459,9 @@ $('quit').onclick = () => {
   if (tutorial) return showPicker('menu');
   if (!P || solved) return showPicker('menu');
   closeBar();
-  showModal('Leave this puzzle?',
-    'Leaving keeps the board so you can come back to it. Giving up ends the round.', [
-    ['Leave for now', true, pauseAndLeave],
+  showModal('Back to the menu?',
+    'Save the board to pick up later from the menu, or give up and see the answer.', [
+    ['Save and go to menu', true, pauseAndLeave],
     ['Give up and see it', false, () => {
       gaveUp = true; revealed = true; solved = true; clearInterval(timerId);
       marks = Logic.startMarks(P); for (const c of P.solution) marks[c] = STAR; closeBar(); draw();
@@ -607,11 +605,23 @@ function analyse() {
     if (starvedRow((c / W) | 0) || starvedCol(c % W) || starvedReg(region[c])) badX.add(c); }
   return { rc, cc, bad, badX, rowBad, colBad, done };
 }
+// Tapping twice for a hoop passes through an X, and that X alone can starve a
+// row or a colour. Red that a fresh X brings on waits a moment, so a hoop on
+// its way does not flash the board red first. Only what the X starves waits:
+// red that was already up stays up, and a hoop that breaks a rule is red at once.
+const HOLD_MS = 500;
+let hold = null;
+function holdRed() { endHold(false); const a = analyse(), p = P;
+  hold = { P: p, badX: a.badX, rowBad: a.rowBad, colBad: a.colBad,
+    timer: setTimeout(() => { hold = null; if (P === p && !$('game').hidden) draw(); }, HOLD_MS) }; }
+function endHold(redraw = true) { if (!hold) return; clearTimeout(hold.timer); hold = null; if (redraw && P) draw(); }
 function draw(winAnim) {
   const { W, H, rowT, colT } = P;
   // analyse() reads autoSet, so it has to be this move's set and not the last one's.
   autoSet = Logic.autoBlanks(P, marks, { around: settings.auto, region: settings.fillRegion, line: settings.fillLine });
   const a = analyse();
+  if (hold && hold.P === P) { a.badX = new Set([...a.badX].filter(c => hold.badX.has(c)));
+    a.rowBad = a.rowBad.map((b, y) => b && hold.rowBad[y]); a.colBad = a.colBad.map((b, x) => b && hold.colBad[x]); }
   gMarks.innerHTML = ''; gClues.innerHTML = ''; gShade.innerHTML = '';
   // a row or column with nothing left to decide fades back a little
   const settled = (cells) => { let any = false;
@@ -749,6 +759,11 @@ $('hint').onclick = showHint; $('check').onclick = showCheck;
 function cellAt(ev) { const svg = $('board'), r = svg.getBoundingClientRect(), vb = svg.viewBox.baseVal;
   const x = Math.floor(((ev.clientX - r.left) / r.width * vb.width - M) / CS), y = Math.floor(((ev.clientY - r.top) / r.height * vb.height - M) / CS);
   if (x < 0 || y < 0 || x >= P.W || y >= P.H) return -1; const c = y * P.W + x; return P.mask[c] ? c : -1; }
+// Does the board differ from the last undo step at this square and nowhere else?
+function tappedJustThis(c) { const top = history[history.length - 1];
+  if (!top || top[c] === marks[c]) return false;
+  for (let i = 0; i < marks.length; i++) if (i !== c && top[i] !== marks[i]) return false;
+  return true; }
 function snapshot() { history.push(marks.slice()); if (history.length > 300) history.shift(); }
 function change(fn) { // every board change runs through here, so star placements are counted
   const before = marks.slice(); fn(); const now = Date.now();
@@ -913,21 +928,26 @@ $('gameCode').onclick = () => {
 board.addEventListener('contextmenu', e => e.preventDefault());
 board.addEventListener('pointerdown', e => { if (!P || solved) return; const c = cellAt(e);
   if (!tutorial) closeBar();
+  if (hold) endHold(false);
   if (c < 0 || givenSet.has(c)) { draw(); return; }
-  snapshot();
   const was = marks.slice();
-  if (e.button === 2) { change(() => { marks[c] = marks[c] === STAR ? EMPTY : STAR; }); draw();
+  const next = e.button === 2 ? (marks[c] === STAR ? EMPTY : STAR) : nextState(c);
+  // Tap-tap for a hoop is one move, so it undoes as one: when the last thing
+  // done was X-ing this very square, the hoop shares that X's undo step.
+  if (!(next === STAR && tappedJustThis(c))) snapshot();
+  if (e.button === 2) { change(() => { marks[c] = next; }); draw();
     if (marks[c] === STAR) offerHelper(c, was); return; }
-  const next = nextState(c); change(() => { marks[c] = next; }); draw();
+  if (next === DOT) holdRed();
+  change(() => { marks[c] = next; }); draw();
   if (next === STAR) offerHelper(c, was);
   drag = next === DOT ? { seen: new Set([c]) } : null; board.setPointerCapture(e.pointerId); });
 board.addEventListener('pointermove', e => { if (!drag) return; const c = cellAt(e);
   if (c < 0 || drag.seen.has(c)) return; drag.seen.add(c); if (marks[c] === EMPTY && !autoSet.has(c)) { marks[c] = DOT; draw(); } });
 const endDrag = () => { drag = null; };
 board.addEventListener('pointerup', endDrag); board.addEventListener('pointercancel', endDrag);
-function undo() { if (!history.length || solved) return; const prev = history.pop(); change(() => { marks.set(prev); }); closeBar(); draw(); }
+function undo() { if (!history.length || solved) return; endHold(false); const prev = history.pop(); change(() => { marks.set(prev); }); closeBar(); draw(); }
 $('undo').onclick = undo;
-$('clear').onclick = () => { if (!P || solved) return; snapshot(); const fresh = Logic.startMarks(P); change(() => { marks.set(fresh); }); closeBar(); draw(); };
+$('clear').onclick = () => { if (!P || solved) return; endHold(false); snapshot(); const fresh = Logic.startMarks(P); change(() => { marks.set(fresh); }); closeBar(); draw(); };
 document.addEventListener('keydown', e => {
   if ($('game').hidden) return;
   if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); return undo(); }

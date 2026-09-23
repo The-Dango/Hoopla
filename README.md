@@ -124,6 +124,12 @@ than by reading the settings screen. "Show rule breaks" stays **on**: it is feed
 than assistance, and without it a first wrong hoop produces no response at all, which reads
 as a broken page rather than a hard puzzle.
 
+Red that a fresh X brings on waits half a second (`HOLD_MS`), because tapping twice for a
+hoop passes through an X that can starve a row or colour for a moment; on phones that
+flashed the board red before every hoop. Red already showing stays up, and a hoop that
+breaks a rule is red at once. For the same reason a tap-tap hoop undoes as one step,
+clearing the square rather than leaving the X behind.
+
 When a hoop lands on a square a helper would have blanked, the game names the rule that
 square breaks and offers the helper:
 
@@ -192,7 +198,7 @@ included), and a gear for settings. A Resume button appears when a puzzle is in 
 
 **How to play** — the last button on the menu, "Haven't caused a Hoopla before?". It covers
 the controls first, because those were the one thing the game explained nowhere. Then the
-three rules, each on a hand-built 3×3, and what Hint, Check and Give up cost. It ends with
+three rules, each on a hand-built 3×3, and what Hint, Check and giving up cost. It ends with
 "Try it out", which starts the tutorial. The board screen carries a one-line version of the
 controls, for the majority who will never open any of this.
 
@@ -244,15 +250,15 @@ with the clock picked up where it left off, since opening settings stops it.
 A finished daily offers one way onward rather than two, because "another one" and "menu"
 would both be the menu: there is only one daily a day.
 
-**Board** — header, board, and five buttons: Undo, Clear, Hint, Check, Give up. The header
+**Board** — header, board, and five buttons: Undo, Clear, Hint, Check, Menu. The header
 carries the board's title, a chip reading "N per colour" (hidden on Blank boards, which have
 no colours; shortened to "× N" below 360px), the timer, and the gear. The chip draws its hoop
 in the colour a hoop has while the puzzle is unsolved rather than the gold of a finished one,
 since it is a reminder of what to place. The puzzle code sits under the board as a
 tap-to-copy chip. Closing the tab pauses automatically. Keyboard: H hint, C check, U undo,
-Cmd+Z undo, Esc give up.
+Cmd+Z undo, Esc menu.
 
-Anything the player has to answer — Give up, and the rule offers below — opens as a card over
+Anything the player has to answer — Menu (save and leave, or give up), and the rule offers below — opens as a card over
 the board with the board blurred out behind it and **the clock stopped**, so a paused puzzle
 cannot be worked on while the question is up. The solution reveal after giving up is
 deliberately *not* blurred: the point of it is to look at the board.
