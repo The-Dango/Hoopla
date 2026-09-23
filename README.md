@@ -128,7 +128,9 @@ Red that a fresh X brings on waits half a second (`HOLD_MS`), because tapping tw
 hoop passes through an X that can starve a row or colour for a moment; on phones that
 flashed the board red before every hoop. Red already showing stays up, and a hoop that
 breaks a rule is red at once. For the same reason a tap-tap hoop undoes as one step,
-clearing the square rather than leaving the X behind.
+clearing the square rather than leaving the X behind. And a quick double tap on an X
+(`DOUBLE_MS`, 400ms) leaves a hoop: the second tap, which would otherwise run the cycle on
+to empty, is dropped.
 
 When a hoop lands on a square a helper would have blanked, the game names the rule that
 square breaks and offers the helper:

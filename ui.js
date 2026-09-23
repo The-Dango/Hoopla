@@ -777,6 +777,7 @@ function change(fn) { // every board change runs through here, so star placement
 function nextState(c) { if (marks[c] === STAR) return EMPTY;
   if (marks[c] === DOT || marks[c] === START || autoSet.has(c)) return STAR; return DOT; }
 let drag = null;
+const DOUBLE_MS = 400; let hoopTap = null;
 const board = $('board');
 // execCommand is deprecated, but it is synchronous and does not need the
 // clipboard permission, so it covers the cases where the async API refuses.
@@ -932,6 +933,12 @@ board.addEventListener('pointerdown', e => { if (!P || solved) return; const c =
   if (c < 0 || givenSet.has(c)) { draw(); return; }
   const was = marks.slice();
   const next = e.button === 2 ? (marks[c] === STAR ? EMPTY : STAR) : nextState(c);
+  // Double-tapping an X means "hoop here", but the cycle would run it on past
+  // the hoop to empty. A tap that lands on a hoop this same square got a moment
+  // ago is the second half of that double tap, so the hoop stays.
+  if (e.button !== 2 && next === EMPTY && hoopTap && hoopTap.P === P && hoopTap.c === c
+      && e.timeStamp - hoopTap.t < DOUBLE_MS) { hoopTap = null; return; }
+  hoopTap = e.button !== 2 && next === STAR ? { P, c, t: e.timeStamp } : null;
   // Tap-tap for a hoop is one move, so it undoes as one: when the last thing
   // done was X-ing this very square, the hoop shares that X's undo step.
   if (!(next === STAR && tappedJustThis(c))) snapshot();
@@ -945,7 +952,7 @@ board.addEventListener('pointermove', e => { if (!drag) return; const c = cellAt
   if (c < 0 || drag.seen.has(c)) return; drag.seen.add(c); if (marks[c] === EMPTY && !autoSet.has(c)) { marks[c] = DOT; draw(); } });
 const endDrag = () => { drag = null; };
 board.addEventListener('pointerup', endDrag); board.addEventListener('pointercancel', endDrag);
-function undo() { if (!history.length || solved) return; endHold(false); const prev = history.pop(); change(() => { marks.set(prev); }); closeBar(); draw(); }
+function undo() { if (!history.length || solved) return; endHold(false); hoopTap = null; const prev = history.pop(); change(() => { marks.set(prev); }); closeBar(); draw(); }
 $('undo').onclick = undo;
 $('clear').onclick = () => { if (!P || solved) return; endHold(false); snapshot(); const fresh = Logic.startMarks(P); change(() => { marks.set(fresh); }); closeBar(); draw(); };
 document.addEventListener('keydown', e => {
