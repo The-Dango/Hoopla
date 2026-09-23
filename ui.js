@@ -643,26 +643,27 @@ function draw(winAnim) {
       if (givenSet.has(c) && !winState) el('circle', { cx: X, cy: Y, r: 20, fill: 'none', stroke: 'var(--ink)', 'stroke-width': 1.5, opacity: .3 }, gMarks);
       const g = drawHoop(gMarks, X, Y, badS ? 'wrong' : winState ? 'win' : 'normal');
       if (winAnim) { g.classList.add('star-win'); g.style.animationDelay = (((c % W) + ((c / W) | 0)) * 45) + 'ms'; } } }
-  // On a shape that does not reach the edge (octagon corners, carved bays) a
-  // clue can sit several squares from where its row or column starts, so a
-  // dotted lead runs across the gap, in the clue's own colour.
-  const clue = (x, y, t, n, broken, lead) => { const over = n > t, full = n === t;
-    const fill = settings.err && broken ? 'var(--bad)' : 'var(--muted)', opacity = full && !over ? .35 : 1;
-    if (lead) el('line', { ...lead, stroke: fill, 'stroke-width': 2.4, 'stroke-linecap': 'round',
-      'stroke-dasharray': '0 8', opacity: opacity * .5 }, gClues);
+  const clue = (x, y, t, n, broken) => { const over = n > t, full = n === t;
     el('text', { x, y, 'text-anchor': 'middle', 'dominant-baseline': 'central', 'font-size': 17, 'font-weight': 700,
-      fill, opacity }, gClues).textContent = t; };
-  const GAP = 12; // keep the dots clear of the number and of the first square
+      fill: settings.err && broken ? 'var(--bad)' : 'var(--muted)', opacity: full && !over ? .35 : 1 }, gClues).textContent = t; };
+  // Where a row or column crosses squares that are not on the board (octagon
+  // corners, carved bays, holes), faint dots carry it across, so the eye can
+  // follow a clue to its squares. One weight everywhere; only red when broken.
+  const GAP = 12; // keep the dots clear of the numbers and of the squares
+  const leads = (on, n, broken, at) => {
+    for (let i = 0; i < n; i++) { if (on[i]) continue; let j = i; while (j + 1 < n && !on[j + 1]) j++;
+      const a0 = i === 0 ? M / 2 + GAP : M + i * CS + GAP, a1 = j === n - 1 ? M + n * CS + M / 2 - GAP : M + (j + 1) * CS - GAP;
+      if (a1 > a0) el('line', { ...at(a0, a1), stroke: settings.err && broken ? 'var(--bad)' : 'var(--muted)', 'stroke-width': 2.4,
+        'stroke-linecap': 'round', 'stroke-dasharray': '0 8', opacity: .2 }, gClues);
+      i = j; } };
   for (let y = 0; y < H; y++) {
-    const row = P.mask.slice(y * W, y * W + W), f = row.indexOf(true), l = row.lastIndexOf(true); if (f < 0) continue;
-    const Y = M + y * CS + CS / 2, L = M / 2, R = M + W * CS + M / 2;
-    clue(L, Y, rowT[y], a.rc[y], a.rowBad[y], f && { x1: L + GAP, y1: Y, x2: M + f * CS - GAP, y2: Y });
-    clue(R, Y, rowT[y], a.rc[y], a.rowBad[y], l < W - 1 && { x1: R - GAP, y1: Y, x2: M + (l + 1) * CS + GAP, y2: Y }); }
+    const row = P.mask.slice(y * W, y * W + W); if (!row.some(Boolean)) continue; const Y = M + y * CS + CS / 2;
+    leads(row, W, a.rowBad[y], (x1, x2) => ({ x1, x2, y1: Y, y2: Y }));
+    clue(M / 2, Y, rowT[y], a.rc[y], a.rowBad[y]); clue(M + W * CS + M / 2, Y, rowT[y], a.rc[y], a.rowBad[y]); }
   for (let x = 0; x < W; x++) {
-    const col = Array.from({ length: H }, (_, y) => P.mask[y * W + x]), f = col.indexOf(true), l = col.lastIndexOf(true); if (f < 0) continue;
-    const X = M + x * CS + CS / 2, T = M / 2, B = M + H * CS + M / 2;
-    clue(X, T, colT[x], a.cc[x], a.colBad[x], f && { x1: X, y1: T + GAP, x2: X, y2: M + f * CS - GAP });
-    clue(X, B, colT[x], a.cc[x], a.colBad[x], l < H - 1 && { x1: X, y1: B - GAP, x2: X, y2: M + (l + 1) * CS + GAP }); }
+    const col = Array.from({ length: H }, (_, y) => P.mask[y * W + x]); if (!col.some(Boolean)) continue; const X = M + x * CS + CS / 2;
+    leads(col, H, a.colBad[x], (y1, y2) => ({ y1, y2, x1: X, x2: X }));
+    clue(X, M / 2, colT[x], a.cc[x], a.colBad[x]); clue(X, M + H * CS + M / 2, colT[x], a.cc[x], a.colBad[x]); }
   drawHint();
   if (a.done && !solved && !tutorial) win();
 }

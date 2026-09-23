@@ -136,9 +136,10 @@ When a row, column or colour can no longer reach its count, the X's in it go red
 player's own, and the squares a helper blanked, so a hoop that starves a row with the
 helpers on shows where it reaches rather than only reddening the clue.
 
-On a shape that does not reach the edge (octagon corners, carved bays), each clue gets a
-faint dotted lead across the empty margin to where its row or column actually starts, in
-the clue's own colour, so it fades when the line is full and goes red when it is broken.
+Wherever a row or column crosses squares that are not on the board (octagon corners, carved
+bays, holes in the middle), faint dots carry it across so a clue can be followed to its
+squares. They are one weight everywhere, whatever the clue, and only change colour, to red,
+when that row or column is broken.
 
 When a hoop lands on a square a helper would have blanked, the game names the rule that
 square breaks and offers the helper:
