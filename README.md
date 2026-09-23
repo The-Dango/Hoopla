@@ -132,6 +132,10 @@ clearing the square rather than leaving the X behind. And a quick double tap on 
 (`DOUBLE_MS`, 400ms) leaves a hoop: the second tap, which would otherwise run the cycle on
 to empty, is dropped.
 
+When a row, column or colour can no longer reach its count, the X's in it go red: the
+player's own, and the squares a helper blanked, so a hoop that starves a row with the
+helpers on shows where it reaches rather than only reddening the clue.
+
 When a hoop lands on a square a helper would have blanked, the game names the rule that
 square breaks and offers the helper:
 

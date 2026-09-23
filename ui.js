@@ -599,9 +599,10 @@ function analyse() {
   const rowBad = [], colBad = [];
   for (let y = 0; y < H; y++) rowBad[y] = rc[y] > rowT[y] || starvedRow(y);
   for (let x = 0; x < W; x++) colBad[x] = cc[x] > colT[x] || starvedCol(x);
-  // The X's doing the starving are what the player can take back, so name them.
+  // Name the X's doing the starving: the player's own, which they can take back,
+  // and the helpers' blanks, which show where the hoop that caused it reaches.
   const badX = new Set();
-  for (let c = 0; c < W * H; c++) { if (!P.mask[c] || marks[c] !== DOT) continue;
+  for (let c = 0; c < W * H; c++) { if (!P.mask[c] || !(marks[c] === DOT || (marks[c] === EMPTY && autoSet.has(c)))) continue;
     if (starvedRow((c / W) | 0) || starvedCol(c % W) || starvedReg(region[c])) badX.add(c); }
   return { rc, cc, bad, badX, rowBad, colBad, done };
 }
@@ -636,7 +637,7 @@ function draw(winAnim) {
   for (let c = 0; c < W * H; c++) { if (!P.mask[c]) continue; const X = M + (c % W) * CS + CS / 2, Y = M + ((c / W) | 0) * CS + CS / 2;
     if (marks[c] === START) drawX(gMarks, X, Y, .3);
     else if (marks[c] === DOT) drawX(gMarks, X, Y, .9, settings.err && a.badX.has(c) ? 'var(--bad)' : null);
-    else if (marks[c] === EMPTY && autoSet.has(c)) drawX(gMarks, X, Y, .45);
+    else if (marks[c] === EMPTY && autoSet.has(c)) { const r = settings.err && a.badX.has(c); drawX(gMarks, X, Y, r ? .75 : .45, r ? 'var(--bad)' : null); }
     else if (marks[c] === STAR) {
       const badS = settings.err && a.bad.has(c), winState = solved && !revealed;
       if (givenSet.has(c) && !winState) el('circle', { cx: X, cy: Y, r: 20, fill: 'none', stroke: 'var(--ink)', 'stroke-width': 1.5, opacity: .3 }, gMarks);
