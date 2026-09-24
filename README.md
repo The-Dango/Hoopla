@@ -253,20 +253,40 @@ the reminders teach them in play, and the header chip carries the only board-spe
 
 ## The tutorial
 
-A 6×6 easy board, run with the real drawing and the real input, so what is learned is what
-the game actually does. It is guided for two steps and then gets out of the way:
+A 6×6 board built by hand for teaching, run with the real drawing and the real input, so
+what is learned is what the game actually does. From its fixed start **every move has exactly
+one square the rules allow**, so the tutorial rings that square and says why, and a new player
+never has a real choice to get wrong:
 
-| Stage | Teaches | Offers |
-| --- | --- | --- |
-| 1 | A square cycles empty → X → hoop | — |
-| 2 | Hoops never touch | Blank out around stars |
-| 3 | The board is yours | — |
+| Stage | Move | Why it is the only square | Then switches on |
+| --- | --- | --- | --- |
+| 1 | top-left corner | a colour that is a single square (every colour holds one hoop) | — |
+| 2 | 2nd hoop | the squares round the first are out (never touch), leaving its neighbour colour one | blank out around hoops |
+| 3 | 3rd hoop | full rows and columns are out too, leaving another colour one | blank out a full row or column |
+| 4 | 4th hoop | a column needs its hoop and every other square in it is out | blank out a full colour |
+| 5 | 5th hoop | once a colour has its hoop the rest of it is out; this colour's other squares all are | — |
+| 6 | last hoop | found by the player, unguided; the toolbar comes back here | — |
 
-Only the rule that follows directly from placing a hoop is taught up front. The other two
-arrive through the ordinary rule reminders, when the player actually puts a hoop in a full
-colour or a full line — which is the same lesson, at the moment it means something, instead
-of a fourth dialog in a row before any real play has happened. The toolbar comes back at
-stage 3, so the rest of it is an ordinary game with no clock and no score.
+Each blanking helper switches itself on the moment the player places the hoop that used its
+rule, and the next stage's note says so, so a player finishes with all three on and is told
+they live under the gear. (They default off for anyone who never takes the tutorial, and the
+in-game reminders still offer them.) The wording says what is literally true of each square
+("touches a hoop or shares a row or column with one"), because on this board several squares
+are out for more than one reason.
+
+The board was designed, not generated. Moves 1 to 4 were first searched for with a stricter
+rule, each move needing exactly one newly taught rule and nothing older, and that is
+impossible: teaching never-touch needs a colour wrapped round the first hoop, and with only
+two hoops down a row or column can only be left with one square if they sit diagonally two
+apart, which that colour rules out. Likewise "the rest of a full colour is out" can never be
+the deciding reason on a board with one option at every move, so the tutorial states it at
+stage 5 rather than making a move depend on it. The board was checked three ways:
+`Engine.solve` finds exactly one solution, `Logic.grade` rates every step level 1, and a walk of
+the chain finds one option at every move with every rule needed somewhere.
+
+The message bar is held at the height of the longest thing it can say (a stage, or a "hold
+on" about a wrong hoop), so the board never moves under the player, and "Leave it" on a wrong
+hoop goes back to the stage in hand. A hoop put down ahead of its turn skips that stage.
 
 Inside the tutorial the reminders appear **every** time a rule is broken rather than every
 third: someone who declined a helper and then breaks that rule is exactly who the lesson is
@@ -277,11 +297,9 @@ Everyone gets the same tutorial, down to the colours: the board is a literal in 
 and `colorRegions` skips its usual palette shuffle when the tutorial is running, so two
 people comparing notes are looking at exactly the same picture.
 
-The board is one the generator made, then frozen into `TUT_BOARD`. Building it fresh from a
-fixed seed does not give the same puzzle twice — the builder runs attempts against a wall
-clock, so a slower machine gets through fewer of them and a different candidate wins. It was
-checked separately to have exactly one solution, contiguous regions, no hoops placed to
-start, and solution squares away from the edges for the no-touching lesson to use.
+The board lives in the source as `TUT_BOARD`, with the order its hoops are forced in as `MOVES`. It is
+not generated at runtime, so it cannot drift, and any change to it has to be re-checked the way
+it was built: one solution, and one forced square at every move.
 
 The example boards are written out by hand rather than generated — the generator starts at
 6×6, and an example wants to be small enough to take in at a glance — but they are drawn

@@ -54,9 +54,15 @@ someone a single file to open locally, nothing else.
   identical generator. Keep it that way; the backend depends on it. `ui.js` is the only file
   that knows about the page.
 - **The blanking helpers default off** and are taught by the tutorial and the rule
-  reminders. Turning them on by default would remove the thing they are there to teach.
+  reminders. The tutorial switches each one on right after the move that teaches its rule
+  (Jeremy's call, 2026-09-24); anyone who skips it starts with them off. Turning them on by
+  default would remove the thing they are there to teach.
 - **The tutorial board is frozen** in `TUT_BOARD` and its palette shuffle is skipped, so
   every player gets the same board in the same colours. Regenerating it would lose that.
+- **The tutorial board has one legal move at every step** from its fixed start, and each
+  stage rings that square and names why. Any edit to `TUT_BOARD` or `MOVES` must keep that
+  chain, re-checked, not eyeballed: exactly one solution (`Engine.solve`) and exactly one
+  forced square at every move. The README's tutorial section says how it was verified.
 
 ## Measured, not assumed
 

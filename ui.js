@@ -124,59 +124,61 @@ function renderMenu() {
   $('menuNote').textContent = 'Everyone gets the same daily board. It changes at midnight Lake Ontario time.';
 }
 // ---------- the tutorial ----------
-// A board the generator made, then frozen: building it fresh each time would
-// not give the same puzzle twice, because the builder runs attempts against a
-// wall clock and a slower machine gets through fewer of them. Checked
-// separately to have exactly one solution, no hoops placed to start, and two
-// solution squares away from the edges for the no-touching lesson to use.
-//
-// It is guided only as far as the first hoop and the rule that follows from
-// it. After that the player is left to think, and the ordinary rule reminders
-// do the teaching when a rule is actually broken.
+// A board built by hand for teaching, then frozen: every player gets it in the same
+// colours. From a fixed start, every move has exactly one square the rules allow, so
+// the tutorial can ring it and say why without a player ever having a real choice:
+//   1  a colour that is a single square (every colour holds one hoop)
+//   2  the squares around that hoop are out (never touch): a colour left with one
+//   3  full rows and columns are out too: another colour left with one
+//   4  a column needs its hoop, and every other square in it is out
+//   5  a colour whose other squares all touch a hoop or share its row or column
+//   6  the last hoop, which the player finds unaided
+// Checked with Engine.solve (exactly one solution), Logic.grade (every step level 1)
+// and a separate walk of the chain (one option at every move, each rule needed at
+// least once). Each blanking helper switches itself on the moment the player places
+// the hoop that used its rule, and the next stage says so.
 let tutorial = null;
 const TUT_BOARD = {
   W: 6, H: 6, k: 1, R: 6, uniform: true, regions: true,
   mask: Array(36).fill(true),
-  region: [3,1,1,1,0,2, 3,1,1,1,1,2, 3,3,4,4,2,2, 3,5,4,4,4,4, 5,5,4,4,4,4, 5,5,5,4,4,4],
+  region: [0,2,1,1,1,3, 2,2,1,1,1,3, 4,2,1,3,3,3, 4,4,1,3,3,5, 5,4,4,3,3,5, 5,5,5,5,5,5],
   rowT: [1,1,1,1,1,1], colT: [1,1,1,1,1,1],
-  solution: [4, 8, 17, 18, 27, 31],
+  solution: [0, 9, 13, 22, 26, 35],
   givens: [],
-  grade: { maxLevel: 2, steps: 19, byLevel: { 1: 17, 2: 2 }, difficulty: 'easy' },
-  difficulty: 'easy', asked: 'easy', size: 0, code: 'SQ1SE-ru', daily: null,
+  grade: { maxLevel: 1, steps: 18, byLevel: { 1: 18 }, difficulty: 'easy' },
+  difficulty: 'easy', asked: 'easy', size: 0, code: null, daily: null,
 };
-
-function tutNeighbours(c) {
-  const x = c % P.W, y = (c / P.W) | 0, out = [];
-  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
-    if (!dx && !dy) continue;
-    const nx = x + dx, ny = y + dy;
-    if (nx < 0 || ny < 0 || nx >= P.W || ny >= P.H) continue;
-    if (P.mask[ny * P.W + nx]) out.push(ny * P.W + nx);
-  }
-  return out;
+// The squares in the order the board forces them.
+const MOVES = [0, 13, 26, 9, 22, 35];
+function cellsWhere(f) { const out = []; for (let c = 0; c < P.W * P.H; c++) if (P.mask[c] && f(c)) out.push(c); return out; }
+const colourOf = c => cellsWhere(d => P.region[d] === P.region[c]);
+const columnOf = c => cellsWhere(d => d % P.W === c % P.W);
+// A move: ring its square, light the unit it completes and the hoops that explain it.
+// `enables` is the helper that switches on once this hoop is down.
+function tutMove(i, text, note, unit, enables) {
+  return { text, note, enables, ring: () => [MOVES[i]], context: () => [...unit(MOVES[i]), ...MOVES.slice(0, i)],
+    done: () => marks[MOVES[i]] === STAR };
 }
-// The solution square with the most neighbours, so the no-touching rule has
-// the most to show. Never one the board has already placed for the player.
-function tutTarget() {
-  const free = P.solution.filter(c => !givenSet.has(c));
-  return free.reduce((best, c) => tutNeighbours(c).length > tutNeighbours(best).length ? c : best, free[0]);
-}
+const HELPER_OPT = { auto: 'optAuto', fillRegion: 'optFillRegion', fillLine: 'optFillLine' };
+// What each helper offers when a real game's reminder asks, in one place.
+const HELPER_ASK = {
+  auto: 'Want every square around a hoop blanked out as you go?',
+  fillRegion: 'Want a colour blanked out once it is full?',
+  fillLine: 'Want a row or column blanked out once it is full?' };
 
 const STAGES = [
-  { text: 'Start here. Tap the ringed square twice \u2014 once for an X, then again for a hoop.',
-    note: 'A square goes empty, then X, then hoop, then empty again.',
-    ring: () => [tutorial.target],
-    done: () => marks[tutorial.target] === STAR },
-
-  { text: 'Hoops never touch, so none of the squares around that one can hold a hoop.',
-    note: 'Not side by side, and not at the corners either.',
-    ring: () => tutNeighbours(tutorial.target).filter(c => marks[c] !== STAR),
-    context: () => [tutorial.target],
-    offer: 'auto', opt: 'optAuto',
-    ask: 'Want the squares around every hoop blanked out for you from now on?' },
-
-  { text: 'The rest is yours. Every colour, every row and every column needs one hoop.',
-    note: 'Break a rule and the game will say so. The buttons below are yours now as well.',
+  tutMove(0, 'Every colour holds exactly one hoop, and this one is a single square. Tap it twice: once for an X, again for a hoop.',
+    'A square goes empty, then X, then hoop, then empty again.', colourOf),
+  tutMove(1, 'Hoops never touch, not even at the corners, so the squares around yours are out. That leaves this colour one square.',
+    'Tap it twice for a hoop.', colourOf, 'auto'),
+  tutMove(2, 'Each row and column holds the number at its edge, one here, so a row or column with its hoop is out. That leaves this colour one square.',
+    'From now on the squares around every hoop blank out for you.', colourOf, 'fillLine'),
+  tutMove(3, 'This column needs its hoop too, and every other square in it touches a hoop or shares a row with one.',
+    'Full rows and columns now blank out for you too.', columnOf, 'fillRegion'),
+  tutMove(4, 'Once a colour has its hoop, the rest of it is out as well. Every other square of this colour is out already: one square left.',
+    'Full colours now blank out for you too.', colourOf),
+  { text: 'One hoop left. You know everything you need to find it.',
+    note: 'The buttons below are yours now. The blanking can be switched off under the gear.',
     free: true,
     done: () => P.solution.every(c => marks[c] === STAR) },
 ];
@@ -184,23 +186,52 @@ const STAGES = [
 function showStage() {
   const st = STAGES[tutorial.i];
   if (!st) return tutDone();
+  // A hoop put down ahead of its turn: nothing to wait for.
+  if (st.done && st.done()) return tutAdvance(st);
   if (st.free) $('game').classList.remove('guided');
   const ring = st.ring ? st.ring() : [];
   curHint = ring.length
     ? { targets: ring, cells: [...ring, ...(st.context ? st.context() : [])], kind: 'star' }
     : null;
   draw();
-  showBar(st.offer ? `${st.text} ${st.ask}` : st.text, '',
-    st.offer ? [['Yes please', true, () => tutAccept(st)], ['Not now', false, tutNext]] : [],
-    st.note);
+  const [text, buttons, note] = stageBar(st);
+  showBar(text, '', buttons, note);
 }
-function tutAccept(st) { settings[st.offer] = true; saveSettings(); $(st.opt).checked = true; tutNext(); }
+// What a stage's bar says. Every stage waits on a hoop, so none can leave the player stuck.
+function stageBar(st) { return [st.text, [], st.note]; }
+// The bar sits above the board and the stages say different amounts, so the board
+// would shift up and down as they change. Hold the bar at the height of the longest
+// thing it can say, a stage or a "hold on", measured on a hidden copy that is gone
+// again before anything is drawn.
+function tutBarFloor() {
+  const bar = $('hintBar'); if (!tutorial || $('game').hidden) return;
+  const probe = bar.cloneNode(true);
+  probe.removeAttribute('id'); probe.querySelectorAll('[id]').forEach(e => e.removeAttribute('id'));
+  probe.className = 'bar'; probe.hidden = false; probe.style.visibility = 'hidden'; probe.style.minHeight = '';
+  bar.after(probe);
+  let tall = 0;
+  const bars = [...STAGES.map(stageBar), mistakeBar('colour'), mistakeBar('column'), mistakeBar(null)];
+  for (const [text, buttons, note] of bars) {
+    probe.querySelector('.bartext p').textContent = text; probe.querySelector('.barnote').textContent = note || '';
+    barButtons(probe.querySelector('.barbtns'), buttons);
+    tall = Math.max(tall, probe.getBoundingClientRect().height); }
+  probe.remove();
+  bar.style.minHeight = tall ? Math.ceil(tall) + 'px' : '';
+}
+window.addEventListener('resize', tutBarFloor);
+// A stage's hoop is down: switch on the helper its rule has just taught, then move on.
+function tutAdvance(st) {
+  if (st.enables && !settings[st.enables]) {
+    settings[st.enables] = true; saveSettings(); $(HELPER_OPT[st.enables]).checked = true; }
+  if (tutorial.i === STAGES.length - 1) return tutDone();
+  tutNext();
+}
 function tutNext() { tutorial.i++; showStage(); }
 function tutProgress() {
   if (!tutorial) return;
   const st = STAGES[tutorial.i];
   if (!tutSecondThoughts()) return; // a wrong hoop is worth saying so at any stage
-  if (st && st.done && st.done()) { if (tutorial.i === STAGES.length - 1) return tutDone(); tutNext(); }
+  if (st && st.done && st.done()) tutAdvance(st);
 }
 // The first unit that can no longer be filled: its hoops plus the squares still
 // able to take one fall short of its count. Squares are counted as blocked for
@@ -232,19 +263,26 @@ function tutSecondThoughts() {
   curHint = ring.length ? { targets: ring, cells: [...s.cells, ...wrong], kind: 'mistake' }
                         : { targets: wrong, cells: wrong, kind: 'mistake' };
   draw();
-  showBar(ring.length ? `Hold on \u2014 that leaves the ringed ${s.what} nowhere to put a hoop.`
-                      : 'Hold on \u2014 that is not where this one goes.',
-    'bad', [['Take it back', true, () => { undo(); showStage(); }], ['Leave it', false, closeBar]],
-    ring.length ? 'No rule is broken yet, which is why nothing lit up \u2014 the board simply cannot be finished from here.'
-                : 'Every colour, every row and every column still needs exactly one hoop.');
+  const [text, buttons, note] = mistakeBar(ring.length ? s.what : null);
+  showBar(text, 'bad', buttons, note);
   return false;
+}
+// "Leave it" keeps the hoop and goes back to the lesson in hand, rather than
+// closing the bar, which would drop the board by the bar's whole height.
+function mistakeBar(what) {
+  const buttons = [['Take it back', true, () => { undo(); showStage(); }], ['Leave it', false, showStage]];
+  return what
+    ? [`Hold on \u2014 that leaves the ringed ${what} nowhere to put a hoop.`, buttons,
+       'No rule is broken yet, which is why nothing lit up \u2014 the board simply cannot be finished from here.']
+    : ['Hold on \u2014 that is not where this one goes.', buttons,
+       'Every colour, every row and every column still needs exactly one hoop.'];
 }
 function tutDone() {
   curHint = null; solved = true; clearInterval(timerId); draw(true);
   const on = ['auto', 'fillRegion', 'fillLine'].filter(k => settings[k]).length;
   $('winTitle').textContent = 'That is the whole game';
   $('winScore').innerHTML = `<dd class="note">${on === 3
-    ? 'With all three helpers on, the board will keep itself tidy while you think.'
+    ? 'The three helpers stay on, so the board keeps itself tidy while you think. They are under the gear if you would rather mark squares by hand.'
     : on ? 'The other helpers are under the gear whenever you want them.'
          : 'The helpers are all under the gear if you change your mind.'}</dd>`;
   $('winStep').hidden = true;
@@ -253,7 +291,7 @@ function tutDone() {
   $('win').classList.add('show'); confetti();
 }
 function startTutorial() {
-  tutorial = { i: 0, target: -1, said: null };
+  tutorial = { i: 0, said: null };
   lastOpts = { opts: { shape: 'square', k: 1, size: 0, difficulty: 'easy' }, key: null, source: 'own' };
   showGame(); clearSaved(); closeBar();
   $('game').classList.add('tut', 'guided');
@@ -269,11 +307,12 @@ function startTutorial() {
   hints = 0; shows = 0; solved = false; gaveUp = false; revealed = false; curHint = null;
   elapsed = 0;
   colorRegions(); buildBoard(); renderRules(); renderDev(); renderCounts();
-  tutorial.target = tutTarget();
+  tutBarFloor();
   showStage();
 }
 function endTutorial() {
   tutorial = null;
+  $('hintBar').style.minHeight = '';
   $('game').classList.remove('tut', 'guided');
   $('gameCode').hidden = false;
 }
@@ -801,9 +840,12 @@ function drawHint() {
 function showBar(text, tone, buttons, note) {
   const bar = $('hintBar'); bar.className = 'bar' + (tone ? ' ' + tone : ''); bar.hidden = false;
   $('hintText').textContent = text; $('barNote').textContent = note || '';
-  const box = $('barBtns'); box.innerHTML = '';
-  for (const [label, primary, fn] of buttons) { const b = document.createElement('button'); b.textContent = label; if (primary) b.className = 'primary'; b.onclick = fn; box.appendChild(b); }
+  barButtons($('barBtns'), buttons);
   revealBar(bar);
+}
+function barButtons(box, buttons) {
+  box.innerHTML = '';
+  for (const [label, primary, fn] of buttons) { const b = document.createElement('button'); b.textContent = label; if (primary) b.className = 'primary'; if (fn) b.onclick = fn; box.appendChild(b); }
 }
 // The bar sits above the board, so opening one pushes the board down and that
 // movement is itself the signal that something appeared. It only reads as a
@@ -966,7 +1008,7 @@ function ruleTrip(c, before) {
     title: 'Hoops can never touch',
     note: 'No two hoops ever sit next to each other, side by side or corner to corner. '
         + 'That square touches a hoop you have already placed, so it can never hold one.',
-    offer: 'Want every square around a hoop blanked out as you go?' };
+    offer: HELPER_ASK.auto };
 
   const rg = !settings.fillRegion && fullUnit(c, before, 'region');
   if (rg) return {
@@ -974,7 +1016,7 @@ function ruleTrip(c, before) {
     title: P.k === 1 ? 'That colour already has its hoop' : 'That colour already has its hoops',
     note: `Every colour on the board holds exactly ${hoopWord(P.k)}. This one is full already, `
         + 'so no other square inside it can take one.',
-    offer: 'Want a colour blanked out once it is full?' };
+    offer: HELPER_ASK.fillRegion };
 
   const ln = !settings.fillLine && fullUnit(c, before, 'line');
   if (ln) return {
@@ -982,7 +1024,7 @@ function ruleTrip(c, before) {
     title: `That ${ln.kind} already has ${ln.target === 1 ? 'its hoop' : 'its hoops'}`,
     note: `The number at the edge is how many hoops this ${ln.kind} holds: ${hoopWord(ln.target)}. `
         + 'It has them already, so no other square along it can take one.',
-    offer: 'Want a row or column blanked out once it is full?' };
+    offer: HELPER_ASK.fillLine };
 
   return null;
 }
@@ -1022,7 +1064,10 @@ $('gameCode').onclick = () => {
   if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(() => show(true), fallback);
   else fallback();
 };
-board.addEventListener('contextmenu', e => e.preventDefault());
+// Right-click is the board's own "place a hoop", so the browser's menu stays shut over the
+// whole board area. That includes the finish card: the tutorial shows it in the same
+// press that places the last hoop, so the menu event lands on the card, not the board.
+document.querySelector('.boardbox').addEventListener('contextmenu', e => e.preventDefault());
 board.addEventListener('pointerdown', e => { if (!P || solved) return; const c = cellAt(e);
   if (!tutorial) closeBar();
   if (hold) endHold(false);

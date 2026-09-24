@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Hoopla</title>
-<meta name="build" content="0.15.6 · 2026-09-24">
+<meta name="build" content="0.16.2 · 2026-09-24">
 <meta name="description" content="A logic puzzle game in the family of Sudoku, Star Battle and Queens. Drop hoops so every region, row and column holds the right number, and no two hoops ever touch.">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
@@ -202,6 +202,13 @@ details.dev summary { cursor: pointer; font-weight: 600; min-height: 32px; }
 #board { width: 100%; height: auto; display: block; margin: 0 auto; touch-action: none; user-select: none; -webkit-user-select: none;
   background: var(--tray); border-radius: 18px; box-shadow: 0 0 0 2px var(--edge), 0 6px 0 2px var(--shadow); margin-bottom: 6px; }
 #board .cell { cursor: pointer; }
+/* Only the squares themselves take the pointer. Everything drawn over them (X's,
+   hoops, shading, hint rings) is redrawn on every move, and a right-click that
+   lands on something the move then replaces reaches Safari's context menu instead
+   of the board, which is why the menu popped up on a finishing right-click. The
+   squares are never redrawn mid-game, and taps are located by position anyway. */
+#board * { pointer-events: none; }
+#board .cell { pointer-events: auto; }
 .toolbar { display: flex; gap: 8px; width: 100%; flex-wrap: wrap; margin-top: 4px; }
 .toolbar button { flex: 1 1 0; min-width: 84px; padding: 9px 8px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
 .toolbar svg.ic { width: 18px; height: 18px; }
