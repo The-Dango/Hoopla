@@ -121,7 +121,7 @@ function renderMenu() {
   const saved = savedGame();
   $('resumeBtn').hidden = !saved;
   if (saved) $('resumeInfo').textContent = `${saved.P.daily ? 'Daily' : cap(saved.P.difficulty)} board, paused at ${fmt(saved.elapsed)}`;
-  $('menuNote').textContent = 'Everyone gets the same daily board. It changes at midnight New York time.';
+  $('menuNote').textContent = 'Everyone gets the same daily board. It changes at midnight Toronto time.';
 }
 // ---------- the tutorial ----------
 // A board the generator made, then frozen: building it fresh each time would
@@ -250,7 +250,7 @@ function tutDone() {
   $('winPick').hidden = true;
   $('winMenu').hidden = true;
   $('winNew').textContent = 'Go cause a Hoopla';
-  $('win').classList.add('show');
+  $('win').classList.add('show'); confetti();
 }
 function startTutorial() {
   tutorial = { i: 0, target: -1, said: null };
@@ -757,7 +757,19 @@ function win() {
   if (P.daily) $('winNew').textContent = 'Another like this'; else if (!fromPick) $('winNew').textContent = 'Another one';
   if (P.daily) { try { localStorage.setItem(NSKEY + 'daily-' + P.daily, JSON.stringify({ final: r.final, time: elapsed })); } catch (e) {} }
   renderDev();
-  setTimeout(() => $('win').classList.add('show'), 700);
+  setTimeout(() => { $('win').classList.add('show'); confetti(); }, 700);
+}
+// A handful of hoops thrown up over the finish card, in the hoop's two colours.
+// Pure decoration: nothing reads it, and it clears itself away.
+function confetti() {
+  if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const box = document.createElement('div'), cols = ['--o', '--sun'];
+  box.className = 'confetti'; box.setAttribute('aria-hidden', 'true');
+  for (let i = 0; i < 30; i++) { const e = document.createElement('i'), rnd = (a, b) => a + Math.random() * (b - a);
+    e.style.cssText = `--x:${rnd(2, 96)}%;--s:${rnd(12, 24)}px;--c:var(${cols[i % cols.length]});--dx:${rnd(-90, 90)}px;`
+      + `--r:${rnd(-540, 540)}deg;--t:${rnd(1.3, 2.1)}s;--d:${rnd(0, .4)}s`;
+    box.appendChild(e); }
+  document.body.appendChild(box); setTimeout(() => box.remove(), 2800);
 }
 
 // ---------- hints, checks ----------
@@ -769,7 +781,7 @@ function drawHint() {
   const vb = $('board').viewBox.baseVal;
   let scrim = `M0 0h${vb.width}v${vb.height}h${-vb.width}Z`;
   for (const c of keep) scrim += rect(c);
-  el('path', { d: scrim, 'fill-rule': 'evenodd', fill: 'var(--bg)', opacity: .72 }, gDim);
+  el('path', { d: scrim, 'fill-rule': 'evenodd', fill: 'var(--tray)', opacity: .72 }, gDim);
   const accent = curHint.kind === 'mistake' ? 'var(--bad)' : 'var(--gold)';
   const context = [...keep].filter(c => !targets.has(c));
   if (context.length) { let edge = '';

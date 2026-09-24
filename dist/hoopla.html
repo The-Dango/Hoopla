@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Hoopla</title>
-<meta name="build" content="0.14.1 · 2026-09-23">
+<meta name="build" content="0.15.2 · 2026-09-23">
 <meta name="description" content="A logic puzzle game in the family of Sudoku, Star Battle and Queens. Drop hoops so every region, row and column holds the right number, and no two hoops ever touch.">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<meta name="theme-color" content="#E4E9EF" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#141A26" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#E8F2FB" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#15122A" media="(prefers-color-scheme: dark)">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -23,70 +23,125 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
 <style>
+/* Two layers of colour. The chrome (menus, buttons, cards) takes its colours from
+   the hoop itself: its blue for doing things, its winning gold kept for the few
+   moments that matter (the daily, a hint, a finish), and little else. The board keeps its own tokens (--line, --r*,
+   --o, --gold, --bad, --dot...) exactly as they were: it is the instrument, and
+   what a hoop, an X or a red square means must not move with a restyle. */
 :root {
   box-sizing: border-box;
   padding-top: env(safe-area-inset-top, 0px);
   padding-bottom: env(safe-area-inset-bottom, 0px);
-  --bg: #E4E9EF; --panel: #F4F6F9; --ink: #1C2541; --muted: #5B6480; --line: #1C2541;
-  --pri: #1C2541; --priink: #E4E9EF; --prisub: rgba(255,255,255,.75);
-  --blank: #F4F6F9; --leadop: .2;
+  /* room between everything and the edge of a phone, never under a notch */
+  --gutter: clamp(16px, 5vw, 24px);
+  --padl: max(var(--gutter), env(safe-area-inset-left, 0px));
+  --padr: max(var(--gutter), env(safe-area-inset-right, 0px));
+  --bg: #E8F2FB; --panel: #FFFFFF; --tray: #FFFFFF; --ink: #1C2541; --muted: #5B6480;
+  --edge: #1C2541; --shadow: #1C2541; --soft: rgba(28,37,65,.16); --scrim: rgba(28,37,65,.38);
+  --sun: #FFC53D; --band: #CFE6F8;
+  --tileink: #1C2541; --tilesub: rgba(28,37,65,.78);
+  --pri: var(--o); --priink: #1C2541; --prisub: rgba(28,37,65,.78);
+  --line: #1C2541; --blank: #F4F6F9; --leadop: .2;
   --thin: rgba(28,37,65,.22); --gold: #D4951A; --bad: #C8323C; --ok: #2F7D5B; --dot: #1C2541; --startdot: rgba(28,37,65,.2); --o: #2FA8E0; --chip: rgba(28,37,65,.07); --chipedge: rgba(28,37,65,.14); --chipon: #5B6480;
   --r0:#F4C4B3; --r1:#F1DE9C; --r2:#C5E1AE; --r3:#A7D6D4; --r4:#B8C7EE; --r5:#D5C0EC; --r6:#F0BAD2; --r7:#DCD4C1; --r8:#BCDFF2; --r9:#E9C39C;
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
-  --bg: #141A26; --panel: #1C2433; --ink: #E8ECF4; --muted: #9AA3BA; --line: #0B0F17;
-  --pri: #2B4C6F; --priink: #E8ECF4; --prisub: rgba(232,236,244,.82);
-  --blank: #566076; --leadop: .42;
+  --bg: #15122A; --panel: #221D3D; --tray: #221D3D; --ink: #E8ECF4; --muted: #A39DBD;
+  --edge: #07060F; --shadow: #07060F; --soft: rgba(255,255,255,.14); --scrim: rgba(5,4,12,.5);
+  --sun: #F2B53A; --band: #2C3868;
+  --tileink: #1C1838; --tilesub: rgba(28,24,56,.8);
+  --pri: var(--o); --priink: #1C1838; --prisub: rgba(28,24,56,.8);
+  --line: #0B0F17; --blank: #566076; --leadop: .42;
   --thin: rgba(0,0,0,.35); --gold: #F2B84B; --bad: #FF6B72; --ok: #6FD3A2; --dot: #0E1320; --startdot: rgba(10,14,22,.38); --o: #3FB6EC; --chip: rgba(255,255,255,.07); --chipedge: rgba(255,255,255,.14); --chipon: #8B95AF;
   --r0:#8A5A4B; --r1:#857535; --r2:#56753F; --r3:#3E7270; --r4:#4A5B8C; --r5:#6B528A; --r6:#8A4D68; --r7:#6E6754; --r8:#3F6D86; --r9:#8A6440; } }
 :root[data-theme="dark"] {
-  --bg: #141A26; --panel: #1C2433; --ink: #E8ECF4; --muted: #9AA3BA; --line: #0B0F17;
-  --pri: #2B4C6F; --priink: #E8ECF4; --prisub: rgba(232,236,244,.82);
-  --blank: #566076; --leadop: .42;
+  --bg: #15122A; --panel: #221D3D; --tray: #221D3D; --ink: #E8ECF4; --muted: #A39DBD;
+  --edge: #07060F; --shadow: #07060F; --soft: rgba(255,255,255,.14); --scrim: rgba(5,4,12,.5);
+  --sun: #F2B53A; --band: #2C3868;
+  --tileink: #1C1838; --tilesub: rgba(28,24,56,.8);
+  --pri: var(--o); --priink: #1C1838; --prisub: rgba(28,24,56,.8);
+  --line: #0B0F17; --blank: #566076; --leadop: .42;
   --thin: rgba(0,0,0,.35); --gold: #F2B84B; --bad: #FF6B72; --ok: #6FD3A2; --dot: #0E1320; --startdot: rgba(10,14,22,.38); --o: #3FB6EC; --chip: rgba(255,255,255,.07); --chipedge: rgba(255,255,255,.14); --chipon: #8B95AF;
   --r0:#8A5A4B; --r1:#857535; --r2:#56753F; --r3:#3E7270; --r4:#4A5B8C; --r5:#6B528A; --r6:#8A4D68; --r7:#6E6754; --r8:#3F6D86; --r9:#8A6440; }
 html { scroll-padding-top: env(safe-area-inset-top, 0px); }
 *, *::before, *::after { box-sizing: inherit; }
 [hidden] { display: none !important; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 /* A quick second tap is a second press, never a zoom. Pinch still zooms. */
 html { touch-action: manipulation; }
 body { margin: 0; background: var(--bg); color: var(--ink);
   font-family: "Bricolage Grotesque", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; font-size: 16px; line-height: 1.45; }
 h1 { font-size: 1.7rem; font-weight: 800; letter-spacing: -0.02em; margin: 0; line-height: 1.1; }
 h2 { font-size: 1.2rem; font-weight: 800; margin: 0; }
-button { font: inherit; color: var(--ink); background: var(--panel); border: 1.5px solid var(--thin); border-radius: 12px;
-  padding: 10px 16px; cursor: pointer; min-height: 44px; }
-button:hover { border-color: var(--ink); }
-button:focus-visible, input:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
-button.primary { background: var(--pri); color: var(--priink); border-color: var(--pri); font-weight: 600; }
-button.big { font-size: 1.05rem; padding: 16px 18px; text-align: left; width: 100%; display: flex; flex-direction: column; gap: 2px; }
-button.big small { font-weight: 400; color: var(--muted); font-size: .88rem; }
+svg.ic { width: 20px; height: 20px; flex: none; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ---- buttons: chunky, a little toy-like, and they press in ---- */
+button { font: inherit; color: var(--ink); background: var(--panel); border: 2px solid var(--edge); border-radius: 14px;
+  padding: 10px 16px; cursor: pointer; min-height: 44px; font-weight: 600;
+  box-shadow: 0 3px 0 var(--shadow); transition: transform .08s ease, box-shadow .08s ease; }
+button:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 var(--shadow); }
+@media (hover: hover) { button:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 0 var(--shadow); } }
+button:focus-visible, input:focus-visible { outline: 3px solid var(--o); outline-offset: 3px; }
+button.primary { background: var(--pri); color: var(--priink); font-weight: 700; }
+button.big { font-size: 1.1rem; padding: 16px 16px 16px 18px; text-align: left; width: 100%; display: flex; flex-direction: column; gap: 2px;
+  border-radius: 18px; box-shadow: 0 4px 0 var(--shadow); font-weight: 700; }
+button.big:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 1px 0 var(--shadow); }
+button.big small { font-weight: 500; color: var(--muted); font-size: .88rem; }
 button.primary.big small { color: var(--prisub); }
+@media (prefers-reduced-motion: reduce) { button, button:hover:not(:disabled), button:active:not(:disabled) { transition: none; transform: none; } }
 .screen[hidden] { display: none; }
 
 /* ---- picker ---- */
-#picker { max-width: 520px; margin: 0 auto; padding: 28px 16px 48px; display: flex; flex-direction: column; gap: 18px; }
+#picker { max-width: 520px; margin: 0 auto; padding: 26px var(--padr) 48px var(--padl); display: flex; flex-direction: column; gap: 18px; }
 .pickhead { display: flex; align-items: center; gap: 12px; }
-.pickhead p { margin: 0; color: var(--muted); font-size: .92rem; }
-.pickhead .gear { margin-left: auto; min-width: 44px; padding: 10px; }
-.card2 { background: var(--panel); border-radius: 18px; padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+.pickhead .gear { margin-left: auto; min-width: 46px; padding: 8px; display: grid; place-items: center; }
+.wordmark { font-size: 2.7rem; line-height: 1; letter-spacing: -0.03em; display: flex; flex-direction: column; gap: 6px; }
+.wordmark .mark { display: inline-flex; align-items: baseline; }
+.wordmark .mark svg { width: 1.2em; height: .62em; margin: 0 .02em 0 .03em; overflow: visible; }
+.wordmark .tag { font-size: .95rem; font-weight: 600; letter-spacing: 0; color: var(--muted); }
+/* the menu: plain cards with a hoop-blue badge; only the daily wears gold */
+.tile { flex-direction: row !important; align-items: center; gap: 14px !important; }
+.tile > span:first-child { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.tile .badge { flex: none; width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--o); color: var(--tileink); border: 2px solid var(--edge); }
+.tile .badge svg.ic { width: 24px; height: 24px; }
+#resumeBtn { background: var(--ink); color: var(--bg); }
+#resumeBtn small { color: var(--bg); opacity: .82; }
+#resumeBtn .badge { background: var(--panel); color: var(--ink); }
+#menuDaily { background: var(--sun); color: var(--tileink); }
+#menuDaily small { color: var(--tilesub); }
+#menuDaily .badge { background: var(--panel); color: var(--ink); }
+#menuDaily .ic-done { display: none; }
+/* Today's daily, finished: pressed in and ticked off, the countdown still readable. */
+#menuDaily:disabled { cursor: default; transform: translateY(3px); box-shadow: 0 1px 0 var(--shadow); }
+#menuDaily:disabled .ic-cal { display: none; }
+#menuDaily:disabled .ic-done { display: block; }
+#menuDaily:disabled .badge { background: var(--ok); color: #fff; }
+.card2 { background: var(--panel); border: 2px solid var(--edge); border-radius: 20px; padding: 0 18px 20px;
+  box-shadow: 0 5px 0 var(--shadow); display: flex; flex-direction: column; gap: 14px; }
+.card2 > h2 { background: var(--band); color: var(--ink); margin: 0 -18px; padding: 14px 18px; font-size: 1.35rem;
+  border-bottom: 2px solid var(--edge); border-radius: 18px 18px 0 0; }
 .view[hidden] { display: none; }
 .view { display: flex; flex-direction: column; gap: 14px; }
 .seg { display: flex; flex-wrap: wrap; gap: 8px; }
-.seg button { padding: 9px 14px; border-radius: 999px; background: var(--chip); border-color: var(--chipedge); color: var(--muted); font-weight: 500; }
-.seg button:hover { border-color: var(--muted); color: var(--ink); }
-.seg button[aria-pressed="true"] { background: var(--chipon); color: var(--panel); border-color: var(--chipon); font-weight: 600; }
-.rowbtns button { font-weight: 600; letter-spacing: .01em; padding: 12px 22px; }
-.rowbtns button:not(.primary) { border-width: 2px; border-color: var(--ink); }
+.seg button { padding: 8px 15px; min-height: 40px; border-radius: 999px; background: var(--panel); border: 2px solid var(--soft);
+  color: var(--ink); font-weight: 600; box-shadow: none; }
+@media (hover: hover) { .seg button:hover:not(:disabled) { border-color: var(--ink); transform: none; box-shadow: none; } }
+.seg button:active:not(:disabled) { transform: scale(.96); box-shadow: none; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); font-weight: 700; }
+.rowbtns button { padding: 12px 22px; }
 fieldset { border: 0; padding: 0; margin: 0; }
-legend { font-weight: 600; margin-bottom: 8px; padding: 0; }
+legend { font-weight: 700; margin-bottom: 8px; padding: 0; }
 .rules { color: var(--muted); margin: 0; font-size: .92rem; }
 /* ---- how to play ---- */
 .learn { display: flex; flex-direction: column; gap: 8px; }
-.learn h3 { margin: 0; font-size: 1rem; font-weight: 800; }
+.learn h3 { margin: 0; font-size: 1.05rem; font-weight: 800; display: flex; align-items: flex-start; gap: 9px; }
+/* each rule is marked with a little hoop */
+.learn h3::before { content: ""; flex: none; width: 13px; height: 13px; margin-top: .3em; border-radius: 50%; border: 4px solid var(--o);
+  box-shadow: 0 0 0 1.5px var(--edge), inset 0 0 0 1.5px var(--edge); }
 .learn p { margin: 0; font-size: .92rem; }
 .learn p.sub { color: var(--muted); font-size: .86rem; }
-.learn + .learn { border-top: 1.5px solid var(--thin); padding-top: 14px; }
+.learn + .learn { border-top: 2px dashed var(--soft); padding-top: 14px; }
 .cycle { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .cycle figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .cycle figcaption, .egrow figcaption { font-size: .78rem; color: var(--muted); text-align: center; }
@@ -97,116 +152,141 @@ legend { font-weight: 600; margin-bottom: 8px; padding: 0; }
 .costs { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0; font-size: .9rem; }
 .costs dt { font-weight: 700; } .costs dd { margin: 0; color: var(--muted); }
 .buildstamp { color: var(--muted); margin: 0; font-size: .75rem; text-align: center; opacity: .7; }
-label.opt { display: flex; gap: 10px; align-items: center; cursor: pointer; min-height: 40px; }
-label.opt input { width: 20px; height: 20px; accent-color: var(--ink); }
-.rowbtns { display: flex; gap: 8px; flex-wrap: wrap; }
+label.opt { display: flex; gap: 10px; align-items: center; cursor: pointer; min-height: 40px; font-weight: 500; }
+label.opt input { width: 22px; height: 22px; accent-color: var(--ink); flex: none; }
+.rowbtns { display: flex; gap: 10px; flex-wrap: wrap; }
 .codebox { display: flex; flex-direction: column; gap: 6px; }
 .codebox span { display: flex; gap: 6px; }
-.codebox input { font: inherit; font-size: .9rem; min-width: 0; flex: 1; padding: 10px; border-radius: 10px; border: 1.5px solid var(--thin); background: var(--bg); color: var(--ink); }
+.codebox input { font: inherit; font-size: .9rem; min-width: 0; flex: 1; padding: 10px; border-radius: 12px; border: 2px solid var(--soft); background: var(--bg); color: var(--ink); }
 details.dev { font-size: .85rem; color: var(--muted); }
 details.dev summary { cursor: pointer; font-weight: 600; min-height: 32px; }
 .dev dl { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; margin: 10px 0 0; }
 .dev dt { font-weight: 600; } .dev dd { margin: 0; overflow-wrap: anywhere; }
 
 /* ---- board ---- */
-#game { max-width: 660px; margin: 0 auto; padding: 18px 12px 40px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
-.gamehead { display: flex; align-items: center; gap: 12px; width: 100%; }
-.gamehead .title { font-weight: 700; }
+#game { max-width: 660px; margin: 0 auto; padding: 16px var(--padr) 40px var(--padl); display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.gamehead { display: flex; align-items: center; gap: 8px; width: 100%; }
+.gamehead .title { font-weight: 800; font-size: 1.02rem; letter-spacing: -0.01em; white-space: nowrap; }
 .codechip { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .78rem; font-weight: 500;
-  color: var(--muted); background: var(--chip); border: 1px solid var(--chipedge); border-radius: 999px;
-  padding: 4px 10px; min-height: 0; line-height: 1.5; white-space: nowrap; align-self: flex-start; }
-.codechip:hover { border-color: var(--muted); color: var(--ink); }
+  color: var(--muted); background: var(--chip); border: 1.5px solid var(--chipedge); border-radius: 999px;
+  padding: 4px 10px; min-height: 0; line-height: 1.5; white-space: nowrap; align-self: flex-start; box-shadow: none; }
+@media (hover: hover) { .codechip:hover:not(:disabled) { border-color: var(--muted); color: var(--ink); transform: none; box-shadow: none; } }
+.codechip:active:not(:disabled) { transform: none; box-shadow: none; }
 .codechip[data-copied="yes"] { color: var(--ok); border-color: var(--ok); }
 .codechip[data-copied="no"] { color: var(--bad); border-color: var(--bad); }
 /* How many hoops each colour holds: the rule the player checks most often. */
-.gamehead .kchip { display: inline-flex; align-items: center; gap: 5px; font-size: .82rem; font-weight: 600;
-  color: var(--muted); background: var(--chip); border: 1px solid var(--chipedge); border-radius: 999px;
-  padding: 3px 9px 3px 7px; white-space: nowrap; }
+.gamehead .kchip { display: inline-flex; align-items: center; gap: 5px; font-size: .82rem; font-weight: 700;
+  color: var(--ink); background: var(--panel); border: 2px solid var(--soft); border-radius: 999px;
+  padding: 2px 9px 2px 5px; white-space: nowrap; }
 .gamehead .kchip[hidden] { display: none; }
 .gamehead .kchip svg { display: block; }
 .gamehead .kchip .kshort { display: none; }
 /* On a narrow phone the wording costs more than it explains, and the header
    has a title, a timer and the gear to fit beside it. */
-@media (max-width: 359px) {
+@media (max-width: 379px) {
   .gamehead .kchip .kfull { display: none; }
   .gamehead .kchip .kshort { display: inline; }
 }
-.gamehead .gear { min-width: 36px; min-height: 36px; padding: 6px; line-height: 1; flex: none; }
-.gamehead .timer { margin-left: auto; font-variant-numeric: tabular-nums; font-weight: 700; font-size: 1.3rem; }
+.gamehead .gear { min-width: 40px; min-height: 40px; padding: 6px; line-height: 1; flex: none; display: grid; place-items: center; border-radius: 12px; }
+.gamehead .timer { margin-left: auto; font-variant-numeric: tabular-nums; font-weight: 800; font-size: 1.15rem;
+  background: var(--ink); color: var(--bg); border-radius: 12px; padding: 2px 9px; line-height: 1.4; white-space: nowrap; }
 .boardbox { position: relative; width: 100%; }
 /* the dots that carry a clue across squares off the board; brighter at night, where .2 all but vanished */
 #board .lead { opacity: var(--leadop); }
-#board { width: 100%; height: auto; display: block; margin: 0 auto; touch-action: none; user-select: none; -webkit-user-select: none; }
+/* The board sits on its own tray. The frame is drawn with shadows only: a border
+   or padding here would shift the box that taps are measured against. */
+#board { width: 100%; height: auto; display: block; margin: 0 auto; touch-action: none; user-select: none; -webkit-user-select: none;
+  background: var(--tray); border-radius: 18px; box-shadow: 0 0 0 2px var(--edge), 0 6px 0 2px var(--shadow); margin-bottom: 6px; }
 #board .cell { cursor: pointer; }
-.toolbar { display: flex; gap: 8px; width: 100%; flex-wrap: wrap; }
-.toolbar button { flex: 1 1 0; min-width: 84px; padding: 10px 8px; }
-.counts { color: var(--muted); font-size: .92rem; width: 100%; }
-.note { margin: 0; width: 100%; font-weight: 600; font-size: .95rem; }
+.toolbar { display: flex; gap: 8px; width: 100%; flex-wrap: wrap; margin-top: 4px; }
+.toolbar button { flex: 1 1 0; min-width: 84px; padding: 9px 8px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.toolbar svg.ic { width: 18px; height: 18px; }
+#hint { background: var(--sun); color: var(--tileink); }
+#check { background: var(--o); color: var(--tileink); }
+.gamefoot { width: 100%; display: flex; flex-direction: column; gap: 10px; background: var(--panel); border: 2px solid var(--soft);
+  border-radius: 18px; padding: 14px 16px; }
+.counts { color: var(--muted); font-size: .92rem; width: 100%; font-weight: 600; }
+.note { margin: 0; width: 100%; font-weight: 700; font-size: .98rem; }
+.note:empty { display: none; }
 .help { font-size: .86rem; color: var(--muted); margin: 0; }
-.bar { width: 100%; background: var(--panel); border: 2px solid var(--gold); border-radius: 14px; padding: 12px 14px;
+.help:empty { display: none; }
+.bar { --tone: var(--gold); width: 100%; background: var(--panel); border: 2px solid var(--edge); border-left: 10px solid var(--tone);
+  border-radius: 16px; padding: 12px 14px; box-shadow: 0 4px 0 var(--shadow);
   display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
 .bar[hidden] { display: none; }
-.bar.bad { border-color: var(--bad); } .bar.good { border-color: var(--ok); }
-.bartext { flex: 1 1 240px; } .bar p { margin: 0; }
-.barnote { font-size: .85rem; color: var(--muted); margin-top: 4px !important; } .barnote:empty { display: none; }
+.bar.bad { --tone: var(--bad); } .bar.good { --tone: var(--ok); }
+.bartext { flex: 1 1 240px; } .bar p { margin: 0; font-weight: 600; }
+.barnote { font-size: .85rem; color: var(--muted); margin-top: 4px !important; font-weight: 400 !important; } .barnote:empty { display: none; }
 .barbtns { display: flex; gap: 8px; flex-wrap: wrap; }
 .overlay { position: fixed; inset: 0; z-index: 30; display: none; align-items: center; justify-content: center;
-  padding: 16px; overflow-y: auto; overscroll-behavior: contain; background: rgba(10,14,22,.35); }
+  padding: 16px var(--padr) 16px var(--padl); overflow-y: auto; overscroll-behavior: contain; background: var(--scrim); }
 .overlay.show { display: flex; }
-.overlay.blur { background: rgba(10,14,22,.55); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
+.overlay.blur { backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
 /* A paused board must not be readable. Blurring alone leaves the regions'
    shapes and colours legible, so flatten it to grey as well. The dialog is a
    sibling of .boardbox, not a child, so it stays sharp. */
 #game.dialog-up .boardbox { filter: blur(16px) grayscale(1) contrast(.32) opacity(.5); pointer-events: none; }
 @media (prefers-reduced-motion: reduce) { #game.dialog-up .boardbox { filter: grayscale(1) contrast(.2) opacity(.35); } }
-.dialognote { color: var(--muted); font-size: .94rem; margin: 0 0 14px; }
-#dialogBtns { flex-wrap: wrap; gap: 8px; }
+.dialognote { color: var(--muted); font-size: .94rem; margin: 0 0 16px; }
+#dialogBtns { flex-wrap: wrap; gap: 10px; }
 /* The way out sits back from the two real answers. */
-#dialogBtns .quietbtn { background: none; border-color: transparent; color: var(--muted);
-  text-decoration: underline; text-underline-offset: 3px; font-size: .9rem; }
-#dialogBtns .quietbtn:hover { color: var(--ink); border-color: transparent; }
-.card { background: var(--panel); border-radius: 16px; padding: 18px 22px; text-align: center; margin: auto;
-  box-shadow: 0 10px 40px rgba(0,0,0,.25); border: 2px solid var(--gold); width: min(420px, 100%); max-height: 100%; overflow-y: auto; }
-.card h2 { margin: 0 0 6px; font-size: 1.5rem; }
+#dialogBtns .quietbtn { background: none; border-color: transparent; color: var(--muted); box-shadow: none;
+  text-decoration: underline; text-underline-offset: 3px; font-size: .9rem; font-weight: 500; }
+#dialogBtns .quietbtn:hover { color: var(--ink); border-color: transparent; transform: none; box-shadow: none; }
+.card { background: var(--panel); border-radius: 22px; padding: 20px 22px; text-align: center; margin: auto;
+  box-shadow: 0 7px 0 var(--shadow); border: 2px solid var(--edge); width: min(420px, 100%); max-height: 100%; overflow-y: auto; }
+.card h2 { margin: 0 0 8px; font-size: 1.6rem; letter-spacing: -0.02em; }
+/* the finish card wears the winning colour across its top */
+#win .card { box-shadow: inset 0 12px 0 var(--sun), 0 7px 0 var(--shadow); padding-top: 28px; }
 .card .rowbtns { justify-content: center; }
 .again { display: flex; flex-direction: column; gap: 8px; margin: 0; }
-.again hr, .card hr { border: 0; border-top: 1.5px solid var(--thin); margin: 12px 0; width: 100%; }
+.again hr, .card hr { border: 0; border-top: 2px dashed var(--soft); margin: 12px 0; width: 100%; }
 .again .seg { justify-content: center; }
-.again .seg button { padding: 6px 11px; min-height: 36px; font-size: .9rem; }
-.score { display: grid; grid-template-columns: auto auto; gap: 2px 18px; margin: 4px 0 14px; text-align: left; font-variant-numeric: tabular-nums; }
-.score dt { color: var(--muted); } .score dd { margin: 0; text-align: right; }
-.score .note { grid-column: 1 / -1; font-size: .85rem; color: var(--muted); text-align: center; font-weight: 400; }
-.score .total { font-weight: 800; color: var(--ink); font-size: 1.15rem; padding-top: 4px; border-top: 1.5px solid var(--thin); }
+.again .seg button { padding: 5px 12px; min-height: 36px; font-size: .9rem; }
+.score { display: grid; grid-template-columns: auto auto; gap: 2px 0; margin: 4px 0 14px; text-align: left; font-variant-numeric: tabular-nums; }
+.score dt { color: var(--muted); } .score dd { margin: 0; padding-left: 18px; text-align: right; font-weight: 600; }
+.score .note { grid-column: 1 / -1; padding-left: 0; font-size: .85rem; color: var(--muted); text-align: center; font-weight: 400; }
+.score .total { font-weight: 800; color: var(--ink); font-size: 1.2rem; padding-top: 4px; border-top: 2px solid var(--soft); }
 .busy { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; text-align: center;
-  font-weight: 600; color: var(--muted); padding: 10px; }
+  font-weight: 700; color: var(--muted); padding: 10px; }
 .busy.show { display: flex; }
 .star-win { animation: pop .5s ease-out both; transform-box: fill-box; transform-origin: center; }
 @keyframes pop { 0% { transform: scale(1); } 45% { transform: scale(1.35); } 100% { transform: scale(1); } }
 .hint-hl { animation: glow 1.2s ease-in-out infinite alternate; }
 @keyframes glow { from { opacity: .55; } to { opacity: 1; } }
-@media (prefers-reduced-motion: reduce) { .star-win, .hint-hl { animation: none; } }
+/* A handful of hoops thrown up when a board is solved. Decoration only: they
+   ignore the pointer and are gone in under two seconds. */
+.confetti { position: fixed; inset: 0; pointer-events: none; z-index: 40; overflow: hidden; }
+.confetti i { position: absolute; left: var(--x); top: -30px; width: var(--s); height: var(--s); border-radius: 50%;
+  border: calc(var(--s) * .26) solid var(--c); box-shadow: 0 0 0 1.5px var(--edge), inset 0 0 0 1.5px var(--edge);
+  animation: fall var(--t) cubic-bezier(.25,.6,.5,1) var(--d) both; }
+/* tumbling on a tilted axis, so a ring turns edge-on as it falls */
+@keyframes fall { from { transform: translate(0, 0) rotate3d(1, .4, 0, 0deg); opacity: 1; }
+  80% { opacity: 1; } to { transform: translate(var(--dx), 105vh) rotate3d(1, .4, 0, var(--r)); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .star-win, .hint-hl { animation: none; } .confetti { display: none; } }
 /* The tutorial has no score and no clock, so the tools that serve them go.
    The rest of the toolbar comes back once the guided part is over. */
 #game.tut .timer, #game.tut .counts { display: none; }
+#game.tut .gamehead .gear { margin-left: auto; } /* no timer to push it right */
 #game.tut.guided #undo, #game.tut.guided #clear,
 #game.tut.guided #hint, #game.tut.guided #check { display: none; }
 #game.tut.guided #quit { min-width: 160px; }
-@media (min-width: 880px) { #game { padding-top: 28px; } .toolbar button { flex: 0 1 auto; min-width: 110px; } }
+@media (min-width: 880px) { #game { padding-top: 28px; } .toolbar button { flex: 0 1 auto; min-width: 110px; } .toolbar { justify-content: center; } }
 </style>
 </head>
 <body>
 <div class="screen" id="picker">
   <div class="pickhead">
-    <h1>Hoopla</h1>
-    <button class="gear" id="gearBtn" aria-label="Settings" title="Settings">⚙</button>
+    <h1 class="wordmark"><span class="sr">Hoopla</span><span class="mark" aria-hidden="true">H<svg viewBox="0 0 80 40" aria-hidden="true"><g transform="translate(19 22)"><circle r="13" fill="none" stroke="var(--o)" stroke-width="7"/><circle r="16.5" fill="none" stroke="var(--edge)" stroke-width="2.4"/><circle r="9.5" fill="none" stroke="var(--edge)" stroke-width="2.4"/><path d="M-10.5 -7.4a13.6 13.6 0 0 1 6.2 -4.9" stroke="#fff" stroke-width="2.4" stroke-linecap="round" fill="none" opacity=".8"/></g><g transform="translate(61 22)"><circle r="13" fill="none" stroke="var(--sun)" stroke-width="7"/><circle r="16.5" fill="none" stroke="var(--edge)" stroke-width="2.4"/><circle r="9.5" fill="none" stroke="var(--edge)" stroke-width="2.4"/><path d="M-10.5 -7.4a13.6 13.6 0 0 1 6.2 -4.9" stroke="#fff" stroke-width="2.4" stroke-linecap="round" fill="none" opacity=".8"/></g></svg>pla</span><span class="tag">Drop the hoops. Never let them touch.</span></h1>
+    <button class="gear" id="gearBtn" aria-label="Settings" title="Settings"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="6.4"/><circle cx="12" cy="12" r="2.4"/><path d="M19.20 12.00L22.00 12.00M17.09 17.09L19.07 19.07M12.00 19.20L12.00 22.00M6.91 17.09L4.93 19.07M4.80 12.00L2.00 12.00M6.91 6.91L4.93 4.93M12.00 4.80L12.00 2.00M17.09 6.91L19.07 4.93" stroke-width="3.4" stroke-linecap="butt"/></svg></button>
   </div>
 
   <div class="view" id="viewMenu">
-    <button class="primary big" id="resumeBtn" hidden><span>Resume puzzle</span><small id="resumeInfo"></small></button>
-    <button class="primary big" id="menuDaily"><span>Daily puzzle</span><small id="dailySub"></small></button>
-    <button class="big" id="menuPick"><span>Pick for me</span><small>Choose how hard, we'll do the rest</small></button>
-    <button class="big" id="menuOwn"><span>Let me pick</span><small>Every option, your way</small></button>
-    <button class="big" id="menuLearn"><span>Haven't caused a Hoopla before?</span><small>The rules and the controls, in a minute</small></button>
+    <button class="big tile" id="resumeBtn" hidden><span><span>Resume puzzle</span><small id="resumeInfo"></small></span><span class="badge" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24"><path d="M9 6.5v11l8.5-5.5z" fill="currentColor"/></svg></span></button>
+    <button class="big tile" id="menuDaily"><span><span>Daily puzzle</span><small id="dailySub"></small></span><span class="badge" aria-hidden="true"><svg class="ic ic-cal" viewBox="0 0 24 24"><rect x="4" y="5.5" width="16" height="14.5" rx="3"/><path d="M4 10h16M8.5 3.5v4M15.5 3.5v4"/><circle cx="12" cy="15" r="2.3"/></svg><svg class="ic ic-done" viewBox="0 0 24 24"><path d="M5.5 12.5l4.2 4.2L18.5 8"/></svg></span></button>
+    <button class="big tile" id="menuPick"><span><span>Pick for me</span><small>Choose how hard, we'll do the rest</small></span><span class="badge" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24"><rect x="4.5" y="4.5" width="15" height="15" rx="3.5"/><circle cx="9" cy="9" r="1.2" fill="currentColor" stroke="none"/><circle cx="15" cy="15" r="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/></svg></span></button>
+    <button class="big tile" id="menuOwn"><span><span>Let me pick</span><small>Every option, your way</small></span><span class="badge" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24"><path d="M4 8h9M17 8h3M4 16h3M11 16h9"/><circle cx="15" cy="8" r="2.2"/><circle cx="9" cy="16" r="2.2"/></svg></span></button>
+    <button class="big tile" id="menuLearn"><span><span>Haven't caused a Hoopla before?</span><small>The rules and the controls, in a minute</small></span><span class="badge" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24"><path d="M9.2 9.2a2.9 2.9 0 1 1 4.1 2.6c-.8.4-1.3 1-1.3 1.9v.5"/><circle cx="12" cy="17.6" r=".9" fill="currentColor" stroke="none"/></svg></span></button>
     <p class="rules" id="menuNote"></p>
   </div>
 
@@ -292,7 +372,7 @@ details.dev summary { cursor: pointer; font-weight: 600; min-height: 32px; }
     <span class="title" id="gameTitle"></span>
     <span class="kchip" id="gameK" hidden></span>
     <span class="timer" id="timer">0:00</span>
-    <button class="gear" id="gameGear" aria-label="Settings" title="Settings">⚙</button>
+    <button class="gear" id="gameGear" aria-label="Settings" title="Settings"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="6.4"/><circle cx="12" cy="12" r="2.4"/><path d="M19.20 12.00L22.00 12.00M17.09 17.09L19.07 19.07M12.00 19.20L12.00 22.00M6.91 17.09L4.93 19.07M4.80 12.00L2.00 12.00M6.91 6.91L4.93 4.93M12.00 4.80L12.00 2.00M17.09 6.91L19.07 4.93" stroke-width="3.4" stroke-linecap="butt"/></svg></button>
   </div>
   <div class="bar" id="hintBar" hidden><div class="bartext"><p id="hintText"></p><p class="barnote" id="barNote"></p></div><div class="barbtns" id="barBtns"></div></div>
   <div class="boardbox">
@@ -314,17 +394,19 @@ details.dev summary { cursor: pointer; font-weight: 600; min-height: 32px; }
     <div class="rowbtns" id="dialogBtns"></div>
   </div></div>
   <div class="toolbar">
-    <button id="undo">Undo</button>
-    <button id="clear">Clear</button>
-    <button id="hint">Hint</button>
-    <button id="check">Check</button>
-    <button id="quit">Menu</button>
+    <button id="undo"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 7.5L5 11.5l4 4"/><path d="M5.5 11.5h8.5a5 5 0 0 1 0 10h-2"/></svg>Undo</button>
+    <button id="clear"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M10 7V5h4v2M7 7l1 12.5h8L17 7"/></svg>Clear</button>
+    <button id="hint"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 17h6M10 20.5h4"/><path d="M12 3.5a5.8 5.8 0 0 0-3.4 10.5c.6.5.9 1.1.9 1.8v1.2h5v-1.2c0-.7.3-1.3.9-1.8A5.8 5.8 0 0 0 12 3.5z"/></svg>Hint</button>
+    <button id="check"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5.5 12.5l4.2 4.2L18.5 8"/></svg>Check</button>
+    <button id="quit"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h14"/></svg>Menu</button>
   </div>
-  <div class="counts" id="hintCount"></div>
-  <p class="note" id="note"></p>
-  <p class="help" id="controls">Tap a square once for an X, twice for a hoop. Drag to X out a run.</p>
-  <p class="help" id="scoring"></p>
-  <button class="codechip" id="gameCode" title="Copy this puzzle's code"></button>
+  <div class="gamefoot">
+    <p class="note" id="note"></p>
+    <div class="counts" id="hintCount"></div>
+    <p class="help" id="controls">Tap a square once for an X, twice for a hoop. Drag to X out a run.</p>
+    <p class="help" id="scoring"></p>
+    <button class="codechip" id="gameCode" title="Copy this puzzle's code"></button>
+  </div>
 </div>
 <script>
 // ===== Puzzle engine: shapes, generator, solver =====
@@ -1136,7 +1218,7 @@ function renderMenu() {
   const saved = savedGame();
   $('resumeBtn').hidden = !saved;
   if (saved) $('resumeInfo').textContent = `${saved.P.daily ? 'Daily' : cap(saved.P.difficulty)} board, paused at ${fmt(saved.elapsed)}`;
-  $('menuNote').textContent = 'Everyone gets the same daily board. It changes at midnight New York time.';
+  $('menuNote').textContent = 'Everyone gets the same daily board. It changes at midnight Toronto time.';
 }
 // ---------- the tutorial ----------
 // A board the generator made, then frozen: building it fresh each time would
@@ -1265,7 +1347,7 @@ function tutDone() {
   $('winPick').hidden = true;
   $('winMenu').hidden = true;
   $('winNew').textContent = 'Go cause a Hoopla';
-  $('win').classList.add('show');
+  $('win').classList.add('show'); confetti();
 }
 function startTutorial() {
   tutorial = { i: 0, target: -1, said: null };
@@ -1772,7 +1854,19 @@ function win() {
   if (P.daily) $('winNew').textContent = 'Another like this'; else if (!fromPick) $('winNew').textContent = 'Another one';
   if (P.daily) { try { localStorage.setItem(NSKEY + 'daily-' + P.daily, JSON.stringify({ final: r.final, time: elapsed })); } catch (e) {} }
   renderDev();
-  setTimeout(() => $('win').classList.add('show'), 700);
+  setTimeout(() => { $('win').classList.add('show'); confetti(); }, 700);
+}
+// A handful of hoops thrown up over the finish card, in the hoop's two colours.
+// Pure decoration: nothing reads it, and it clears itself away.
+function confetti() {
+  if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const box = document.createElement('div'), cols = ['--o', '--sun'];
+  box.className = 'confetti'; box.setAttribute('aria-hidden', 'true');
+  for (let i = 0; i < 30; i++) { const e = document.createElement('i'), rnd = (a, b) => a + Math.random() * (b - a);
+    e.style.cssText = `--x:${rnd(2, 96)}%;--s:${rnd(12, 24)}px;--c:var(${cols[i % cols.length]});--dx:${rnd(-90, 90)}px;`
+      + `--r:${rnd(-540, 540)}deg;--t:${rnd(1.3, 2.1)}s;--d:${rnd(0, .4)}s`;
+    box.appendChild(e); }
+  document.body.appendChild(box); setTimeout(() => box.remove(), 2800);
 }
 
 // ---------- hints, checks ----------
@@ -1784,7 +1878,7 @@ function drawHint() {
   const vb = $('board').viewBox.baseVal;
   let scrim = `M0 0h${vb.width}v${vb.height}h${-vb.width}Z`;
   for (const c of keep) scrim += rect(c);
-  el('path', { d: scrim, 'fill-rule': 'evenodd', fill: 'var(--bg)', opacity: .72 }, gDim);
+  el('path', { d: scrim, 'fill-rule': 'evenodd', fill: 'var(--tray)', opacity: .72 }, gDim);
   const accent = curHint.kind === 'mistake' ? 'var(--bad)' : 'var(--gold)';
   const context = [...keep].filter(c => !targets.has(c));
   if (context.length) { let edge = '';
