@@ -127,8 +127,13 @@ const Engine = (() => {
       shuffle(cand, r);
       const take = Math.max(1, Math.floor(cand.length * 0.35));
       for (let i = 0; i < take; i++) { const [c, ns] = cand[i]; if (reg[c] >= 0) continue;
-        ns.sort((a, b) => size[a] - size[b] + (r() - 0.5) * 6);
-        reg[c] = ns[0]; size[ns[0]]++; }
+        // One random draw per neighbour, then the smallest wins. Drawing inside a
+        // sort comparator made the board depend on how many times the browser's
+        // sort chose to compare, which differs between browsers and even between
+        // the first and later runs in one page, so one seed built different boards.
+        let pick = -1, best = Infinity;
+        for (const g of ns) { const v = size[g] + (r() - 0.5) * 3; if (v < best) { best = v; pick = g; } }
+        reg[c] = pick; size[pick]++; }
     }
     return reg;
   }
@@ -212,13 +217,19 @@ const Engine = (() => {
     carved:    { 1: [9, 11], 2: [11, 12] },
     blank:     { 1: [8, 10], 2: [8, 10] },
   };
-  function generate({ shape = 'square', k = 1, size = 0, holes = false, regions = true, seed = Date.now() } = {}) {
+  // Work, not time, bounds a call: solver nodes spent, plus a ceiling on attempts
+  // that never reach the solver. A wall clock let a slow device give up where a
+  // fast one succeeded, so one seed could build a different board, or none,
+  // depending on the phone. 12.5M nodes is about the old 500ms on a recent Mac.
+  // Pass a meter ({ work: 0 }) to be told the work spent, success or not.
+  const WORK_CAP = 12.5e6;
+  function generate({ shape = 'square', k = 1, size = 0, holes = false, regions = true, seed = Date.now(), workCap = WORK_CAP, meter = null } = {}) {
     const r = rng(seed), t0 = Date.now();
     const n = arguments[0].n || SIZES[shape][k][size ? 1 : 0];
-    let attempts = 0, repairsTotal = 0;
+    let attempts = 0, repairsTotal = 0, work = 0;
     for (;;) {
       attempts++;
-      if (Date.now() - t0 > 500) return null;
+      if (work > workCap || attempts > 4000) return null;
       let { W, H, mask } = shape === 'carved' ? Shapes.carved(n, r) : Shapes[shape](n);
       if (holes) mask = punchHoles(W, H, mask, r);
       ({ W, H, mask } = crop({ W, H, mask }));
@@ -241,7 +252,10 @@ const Engine = (() => {
         solution: starList.slice().sort((a, b) => a - b), givens: [] };
       let good = false;
       for (let rep = 0; rep < 80; rep++) {
-        const res = solve(p, 2, 4e6);
+        // The cap holds inside an attempt too: one run of repairs could otherwise spend
+        // many times it, which is where the slow boards spent their time.
+        if (work > workCap) break;
+        const res = solve(p, 2, Math.min(4e6, workCap - work + 1)); work += res.nodes; if (meter) meter.work += res.nodes;
         if (res.aborted) break;
         if (res.sols.length === 1) { good = true; break; }
         const truth = new Set(p.solution);
@@ -264,8 +278,8 @@ const Engine = (() => {
         if (!moved) break;
       }
       if (!good) continue;
-      const fin = solve(p, 2, 4e6);
-      p.stats = { ms: Date.now() - t0, attempts, repairs: repairsTotal, effort: fin.nodes };
+      const fin = solve(p, 2, 4e6); work += fin.nodes; if (meter) meter.work += fin.nodes;
+      p.stats = { ms: Date.now() - t0, attempts, repairs: repairsTotal, effort: fin.nodes, work };
       return p;
     }
   }

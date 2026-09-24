@@ -404,7 +404,7 @@ function prefetch() { // build the likely next board quietly, in slices, while t
   if (nextUp && nextKey === key) return;
   building = true;
   const opts = view === 'pick' ? pickOpts() : o;
-  Logic.buildAsync(Engine, opts, p => { building = false; if (p) { nextUp = p; nextKey = key; } }, 8000);
+  Logic.buildAsync(Engine, opts, p => { building = false; if (p) { nextUp = p; nextKey = key; } });
 }
 function startPuzzle(opts, key, source) {
   if (tutorial) endTutorial();
@@ -418,7 +418,7 @@ function startPuzzle(opts, key, source) {
 }
 function begin(p, opts) {
   $('busy').classList.remove('show'); $('board').style.opacity = 1;
-  if (!p) { $('busy').textContent = 'That combination did not build in time. Go back and try again.'; $('busy').classList.add('show'); return; }
+  if (!p) { $('busy').textContent = 'That combination did not build. Go back and try again.'; $('busy').classList.add('show'); return; }
   if (opts && opts.daily) p.daily = opts.daily;
   P = p; marks = Logic.startMarks(P); givenSet = new Set(P.givens); history = [];
   solved = false; revealed = false; gaveUp = false; hints = 0; placements = 0; placedAt = new Map(); shows = 0;
@@ -675,7 +675,7 @@ function draw(winAnim) {
     clue(X, M / 2, colT[x], a.cc[x], a.colBad[x]); clue(X, M + H * CS + M / 2, colT[x], a.cc[x], a.colBad[x]); }
   for (const red of [false, true]) { let d = '';
     for (const [k, b] of dots) if (b === red) d += `M${k}h0`;
-    if (d) el('path', { d, stroke: red ? 'var(--bad)' : 'var(--muted)', 'stroke-width': 2.4, 'stroke-linecap': 'round', opacity: .2, class: 'lead' }, gClues); }
+    if (d) el('path', { d, stroke: red ? 'var(--bad)' : 'var(--muted)', 'stroke-width': 2.4, 'stroke-linecap': 'round', class: 'lead' }, gClues); }
   drawHint();
   if (a.done && !solved && !tutorial) win();
 }

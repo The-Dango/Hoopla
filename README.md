@@ -306,18 +306,17 @@ optional H for blocked cells and N for no regions, then the seed. The same code 
 rebuilds the same board, which is how two people play an identical puzzle. Codes can be
 entered under the gear.
 
-Caveat: a code only reproduces a board as long as the generator itself doesn't change. For
-anything shipped, generate boards ahead of time and store the finished puzzle rather than
-relying on the code.
+Caveat: a code only reproduces a board as long as the generator itself doesn't change.
+Build 0.13.2 changed it, so codes shared before then open different boards now.
 
-There is a second caveat, and it is the one that matters for a shared daily. `build` runs
-generation attempts against a wall clock, so a device slow enough to get through fewer of
-them can settle for a different board. On cheap boards this never happens: 120 easy 6×6
-seeds gave identical results whether the budget was 1200ms or 1ms, because the builder is
-satisfied long before the clock matters. On expensive ones it does — of 8 big two-hoop hard
-seeds, 2 produced a different board on a starved budget, and graded **medium** instead of
-hard. Saturday's daily is exactly that setup. Serving pre-generated boards removes this; so
-would making the builder stop on a fixed attempt count rather than a time budget.
+Since 0.13.2 generation is deterministic on every device and browser: the generator and the
+builder stop on work done (solver nodes), never on a clock, and nothing random is drawn
+inside a sort comparator, whose call count differs between engines. A slow phone builds
+exactly the board a fast one does, only later. All 51 picker and daily setups were checked
+to fingerprint identically in Chrome and in Safari's engine. When a seed has found nothing
+within the normal budget the builder keeps going, up to eight times it, rather than
+returning nothing, because a seed that fails now fails on every device. Only big Blank and
+big two-hoop Carved ever need that, and they can take several seconds.
 
 ## Data format
 
@@ -358,8 +357,8 @@ rebuilds the exact board, the stamp says which generator built it.
 - No accounts, so nothing follows a player between devices.
 - The daily is the same board for everyone **only within one build**, since each device
   generates it. Two testers on different builds can get different boards. Timezone is no
-  longer a factor: the rollover is midnight New York for everyone. On the hardest boards a
-  slow device can also land on a different board entirely — see the puzzle code caveats.
+  longer a factor: the rollover is midnight New York for everyone. Device speed no longer
+  is either — see the puzzle code section.
 - The rollover still trusts the device clock, so someone who sets their clock forward can
   play ahead. Not worth solving before the backend does it properly.
 

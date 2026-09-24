@@ -132,6 +132,7 @@ const Logic = (() => {
     t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
   // Same options and seed always give the same board, so two people can play an identical puzzle.
   // The builder runs one attempt at a time, so it can be used straight through or spread over idle moments.
+  const BUILD_WORK = 30e6;
   function makeBuilder(Engine, opts) {
     const blank = opts.shape === 'blank';
     if (blank || opts.regions === false) opts = { ...opts, k: 1 }; // without regions, stars per region means nothing
@@ -143,10 +144,17 @@ const Logic = (() => {
     const holeRoll = rnd() < 0.28;
     if (opts.holes === undefined) opts = { ...opts, holes: holeRoll };
     let best = null, bestDist = Infinity, attempts = 0;
-    const t0 = Date.now();
+    const t0 = Date.now(), meter = { work: 0 };
     return {
       get best() { return best; },
-      done() { return bestDist === 0 || attempts >= 40 || (best && bestDist <= 1 && attempts >= 12); },
+      // Stops on work done, never on time, so a slow phone builds exactly the board
+      // a fast one does, only later. BUILD_WORK is about the old 1.2s budget on a
+      // recent Mac. With nothing found yet it keeps going, up to eight times that:
+      // a seed that finds nothing now finds nothing on every device, so giving up
+      // early would mean no daily for anyone. Only two setups ever need it (big
+      // blank, big two-hoop carved), measured at up to ~7s on a Mac.
+      done() { return bestDist === 0 || (best && attempts >= 40) || (best && bestDist <= 1 && attempts >= 12)
+        || meter.work > BUILD_WORK * (best ? 1 : 8); },
       finish() {
         if (!best) return null;
         best.stats.ms = Date.now() - t0; best.difficulty = best.grade.difficulty; best.asked = opts.difficulty;
@@ -155,7 +163,7 @@ const Logic = (() => {
       step() {
         attempts++;
         const P = Engine.generate({ shape: genShape, k: opts.k, size: opts.size, holes: !!opts.holes,
-          regions: genRegions, seed: (rnd() * 2 ** 31) | 0 });
+          regions: genRegions, seed: (rnd() * 2 ** 31) | 0, meter });
         if (!P) return;
         P.units = units(P); P.size = opts.size; P.difficulty = opts.difficulty; P.givens = P.givens || [];
         let g = grade(P);
@@ -170,17 +178,16 @@ const Logic = (() => {
       },
     };
   }
-  function build(Engine, opts, budgetMs = 1200) {
-    const b = makeBuilder(Engine, opts), t0 = Date.now();
-    while (!b.done() && Date.now() - t0 < budgetMs) b.step();
-    while (!b.best && !b.done() && Date.now() - t0 < budgetMs * 2) b.step(); // never come back empty if we can help it
+  function build(Engine, opts) {
+    const b = makeBuilder(Engine, opts);
+    while (!b.done()) b.step();
     return b.finish();
   }
   // Same work, yielding between attempts so the page stays responsive while it builds the next puzzle ahead of time.
-  function buildAsync(Engine, opts, done, budgetMs = 15000) {
-    const b = makeBuilder(Engine, opts), t0 = Date.now();
+  function buildAsync(Engine, opts, done) {
+    const b = makeBuilder(Engine, opts);
     (function loop() {
-      if (b.done() || (Date.now() - t0 > budgetMs && b.best)) return done(b.finish());
+      if (b.done()) return done(b.finish());
       b.step();
       setTimeout(loop, 0);
     })();

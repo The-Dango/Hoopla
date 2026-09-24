@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Hoopla</title>
-<meta name="build" content="0.13.0 · 2026-09-23">
+<meta name="build" content="0.13.2 · 2026-09-23">
 <meta name="description" content="A logic puzzle game in the family of Sudoku, Star Battle and Queens. Drop hoops so every region, row and column holds the right number, and no two hoops ever touch.">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
@@ -29,20 +29,20 @@
   padding-bottom: env(safe-area-inset-bottom, 0px);
   --bg: #E4E9EF; --panel: #F4F6F9; --ink: #1C2541; --muted: #5B6480; --line: #1C2541;
   --pri: #1C2541; --priink: #E4E9EF; --prisub: rgba(255,255,255,.75);
-  --blank: #F4F6F9;
+  --blank: #F4F6F9; --leadop: .2;
   --thin: rgba(28,37,65,.22); --gold: #D4951A; --bad: #C8323C; --ok: #2F7D5B; --dot: #1C2541; --startdot: rgba(28,37,65,.2); --o: #2FA8E0; --chip: rgba(28,37,65,.07); --chipedge: rgba(28,37,65,.14); --chipon: #5B6480;
   --r0:#F4C4B3; --r1:#F1DE9C; --r2:#C5E1AE; --r3:#A7D6D4; --r4:#B8C7EE; --r5:#D5C0EC; --r6:#F0BAD2; --r7:#DCD4C1; --r8:#BCDFF2; --r9:#E9C39C;
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
   --bg: #141A26; --panel: #1C2433; --ink: #E8ECF4; --muted: #9AA3BA; --line: #0B0F17;
   --pri: #2B4C6F; --priink: #E8ECF4; --prisub: rgba(232,236,244,.82);
-  --blank: #566076;
+  --blank: #566076; --leadop: .42;
   --thin: rgba(0,0,0,.35); --gold: #F2B84B; --bad: #FF6B72; --ok: #6FD3A2; --dot: #0E1320; --startdot: rgba(10,14,22,.38); --o: #3FB6EC; --chip: rgba(255,255,255,.07); --chipedge: rgba(255,255,255,.14); --chipon: #8B95AF;
   --r0:#8A5A4B; --r1:#857535; --r2:#56753F; --r3:#3E7270; --r4:#4A5B8C; --r5:#6B528A; --r6:#8A4D68; --r7:#6E6754; --r8:#3F6D86; --r9:#8A6440; } }
 :root[data-theme="dark"] {
   --bg: #141A26; --panel: #1C2433; --ink: #E8ECF4; --muted: #9AA3BA; --line: #0B0F17;
   --pri: #2B4C6F; --priink: #E8ECF4; --prisub: rgba(232,236,244,.82);
-  --blank: #566076;
+  --blank: #566076; --leadop: .42;
   --thin: rgba(0,0,0,.35); --gold: #F2B84B; --bad: #FF6B72; --ok: #6FD3A2; --dot: #0E1320; --startdot: rgba(10,14,22,.38); --o: #3FB6EC; --chip: rgba(255,255,255,.07); --chipedge: rgba(255,255,255,.14); --chipon: #8B95AF;
   --r0:#8A5A4B; --r1:#857535; --r2:#56753F; --r3:#3E7270; --r4:#4A5B8C; --r5:#6B528A; --r6:#8A4D68; --r7:#6E6754; --r8:#3F6D86; --r9:#8A6440; }
 html { scroll-padding-top: env(safe-area-inset-top, 0px); }
@@ -134,6 +134,8 @@ details.dev summary { cursor: pointer; font-weight: 600; min-height: 32px; }
 .gamehead .gear { min-width: 36px; min-height: 36px; padding: 6px; line-height: 1; flex: none; }
 .gamehead .timer { margin-left: auto; font-variant-numeric: tabular-nums; font-weight: 700; font-size: 1.3rem; }
 .boardbox { position: relative; width: 100%; }
+/* the dots that carry a clue across squares off the board; brighter at night, where .2 all but vanished */
+#board .lead { opacity: var(--leadop); }
 #board { width: 100%; height: auto; display: block; margin: 0 auto; touch-action: none; user-select: none; -webkit-user-select: none; }
 #board .cell { cursor: pointer; }
 .toolbar { display: flex; gap: 8px; width: 100%; flex-wrap: wrap; }
@@ -454,8 +456,13 @@ const Engine = (() => {
       shuffle(cand, r);
       const take = Math.max(1, Math.floor(cand.length * 0.35));
       for (let i = 0; i < take; i++) { const [c, ns] = cand[i]; if (reg[c] >= 0) continue;
-        ns.sort((a, b) => size[a] - size[b] + (r() - 0.5) * 6);
-        reg[c] = ns[0]; size[ns[0]]++; }
+        // One random draw per neighbour, then the smallest wins. Drawing inside a
+        // sort comparator made the board depend on how many times the browser's
+        // sort chose to compare, which differs between browsers and even between
+        // the first and later runs in one page, so one seed built different boards.
+        let pick = -1, best = Infinity;
+        for (const g of ns) { const v = size[g] + (r() - 0.5) * 3; if (v < best) { best = v; pick = g; } }
+        reg[c] = pick; size[pick]++; }
     }
     return reg;
   }
@@ -539,13 +546,19 @@ const Engine = (() => {
     carved:    { 1: [9, 11], 2: [11, 12] },
     blank:     { 1: [8, 10], 2: [8, 10] },
   };
-  function generate({ shape = 'square', k = 1, size = 0, holes = false, regions = true, seed = Date.now() } = {}) {
+  // Work, not time, bounds a call: solver nodes spent, plus a ceiling on attempts
+  // that never reach the solver. A wall clock let a slow device give up where a
+  // fast one succeeded, so one seed could build a different board, or none,
+  // depending on the phone. 12.5M nodes is about the old 500ms on a recent Mac.
+  // Pass a meter ({ work: 0 }) to be told the work spent, success or not.
+  const WORK_CAP = 12.5e6;
+  function generate({ shape = 'square', k = 1, size = 0, holes = false, regions = true, seed = Date.now(), workCap = WORK_CAP, meter = null } = {}) {
     const r = rng(seed), t0 = Date.now();
     const n = arguments[0].n || SIZES[shape][k][size ? 1 : 0];
-    let attempts = 0, repairsTotal = 0;
+    let attempts = 0, repairsTotal = 0, work = 0;
     for (;;) {
       attempts++;
-      if (Date.now() - t0 > 500) return null;
+      if (work > workCap || attempts > 4000) return null;
       let { W, H, mask } = shape === 'carved' ? Shapes.carved(n, r) : Shapes[shape](n);
       if (holes) mask = punchHoles(W, H, mask, r);
       ({ W, H, mask } = crop({ W, H, mask }));
@@ -568,7 +581,10 @@ const Engine = (() => {
         solution: starList.slice().sort((a, b) => a - b), givens: [] };
       let good = false;
       for (let rep = 0; rep < 80; rep++) {
-        const res = solve(p, 2, 4e6);
+        // The cap holds inside an attempt too: one run of repairs could otherwise spend
+        // many times it, which is where the slow boards spent their time.
+        if (work > workCap) break;
+        const res = solve(p, 2, Math.min(4e6, workCap - work + 1)); work += res.nodes; if (meter) meter.work += res.nodes;
         if (res.aborted) break;
         if (res.sols.length === 1) { good = true; break; }
         const truth = new Set(p.solution);
@@ -591,8 +607,8 @@ const Engine = (() => {
         if (!moved) break;
       }
       if (!good) continue;
-      const fin = solve(p, 2, 4e6);
-      p.stats = { ms: Date.now() - t0, attempts, repairs: repairsTotal, effort: fin.nodes };
+      const fin = solve(p, 2, 4e6); work += fin.nodes; if (meter) meter.work += fin.nodes;
+      p.stats = { ms: Date.now() - t0, attempts, repairs: repairsTotal, effort: fin.nodes, work };
       return p;
     }
   }
@@ -734,6 +750,7 @@ const Logic = (() => {
     t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
   // Same options and seed always give the same board, so two people can play an identical puzzle.
   // The builder runs one attempt at a time, so it can be used straight through or spread over idle moments.
+  const BUILD_WORK = 30e6;
   function makeBuilder(Engine, opts) {
     const blank = opts.shape === 'blank';
     if (blank || opts.regions === false) opts = { ...opts, k: 1 }; // without regions, stars per region means nothing
@@ -745,10 +762,17 @@ const Logic = (() => {
     const holeRoll = rnd() < 0.28;
     if (opts.holes === undefined) opts = { ...opts, holes: holeRoll };
     let best = null, bestDist = Infinity, attempts = 0;
-    const t0 = Date.now();
+    const t0 = Date.now(), meter = { work: 0 };
     return {
       get best() { return best; },
-      done() { return bestDist === 0 || attempts >= 40 || (best && bestDist <= 1 && attempts >= 12); },
+      // Stops on work done, never on time, so a slow phone builds exactly the board
+      // a fast one does, only later. BUILD_WORK is about the old 1.2s budget on a
+      // recent Mac. With nothing found yet it keeps going, up to eight times that:
+      // a seed that finds nothing now finds nothing on every device, so giving up
+      // early would mean no daily for anyone. Only two setups ever need it (big
+      // blank, big two-hoop carved), measured at up to ~7s on a Mac.
+      done() { return bestDist === 0 || (best && attempts >= 40) || (best && bestDist <= 1 && attempts >= 12)
+        || meter.work > BUILD_WORK * (best ? 1 : 8); },
       finish() {
         if (!best) return null;
         best.stats.ms = Date.now() - t0; best.difficulty = best.grade.difficulty; best.asked = opts.difficulty;
@@ -757,7 +781,7 @@ const Logic = (() => {
       step() {
         attempts++;
         const P = Engine.generate({ shape: genShape, k: opts.k, size: opts.size, holes: !!opts.holes,
-          regions: genRegions, seed: (rnd() * 2 ** 31) | 0 });
+          regions: genRegions, seed: (rnd() * 2 ** 31) | 0, meter });
         if (!P) return;
         P.units = units(P); P.size = opts.size; P.difficulty = opts.difficulty; P.givens = P.givens || [];
         let g = grade(P);
@@ -772,17 +796,16 @@ const Logic = (() => {
       },
     };
   }
-  function build(Engine, opts, budgetMs = 1200) {
-    const b = makeBuilder(Engine, opts), t0 = Date.now();
-    while (!b.done() && Date.now() - t0 < budgetMs) b.step();
-    while (!b.best && !b.done() && Date.now() - t0 < budgetMs * 2) b.step(); // never come back empty if we can help it
+  function build(Engine, opts) {
+    const b = makeBuilder(Engine, opts);
+    while (!b.done()) b.step();
     return b.finish();
   }
   // Same work, yielding between attempts so the page stays responsive while it builds the next puzzle ahead of time.
-  function buildAsync(Engine, opts, done, budgetMs = 15000) {
-    const b = makeBuilder(Engine, opts), t0 = Date.now();
+  function buildAsync(Engine, opts, done) {
+    const b = makeBuilder(Engine, opts);
     (function loop() {
-      if (b.done() || (Date.now() - t0 > budgetMs && b.best)) return done(b.finish());
+      if (b.done()) return done(b.finish());
       b.step();
       setTimeout(loop, 0);
     })();
@@ -1297,7 +1320,7 @@ function prefetch() { // build the likely next board quietly, in slices, while t
   if (nextUp && nextKey === key) return;
   building = true;
   const opts = view === 'pick' ? pickOpts() : o;
-  Logic.buildAsync(Engine, opts, p => { building = false; if (p) { nextUp = p; nextKey = key; } }, 8000);
+  Logic.buildAsync(Engine, opts, p => { building = false; if (p) { nextUp = p; nextKey = key; } });
 }
 function startPuzzle(opts, key, source) {
   if (tutorial) endTutorial();
@@ -1311,7 +1334,7 @@ function startPuzzle(opts, key, source) {
 }
 function begin(p, opts) {
   $('busy').classList.remove('show'); $('board').style.opacity = 1;
-  if (!p) { $('busy').textContent = 'That combination did not build in time. Go back and try again.'; $('busy').classList.add('show'); return; }
+  if (!p) { $('busy').textContent = 'That combination did not build. Go back and try again.'; $('busy').classList.add('show'); return; }
   if (opts && opts.daily) p.daily = opts.daily;
   P = p; marks = Logic.startMarks(P); givenSet = new Set(P.givens); history = [];
   solved = false; revealed = false; gaveUp = false; hints = 0; placements = 0; placedAt = new Map(); shows = 0;
@@ -1568,7 +1591,7 @@ function draw(winAnim) {
     clue(X, M / 2, colT[x], a.cc[x], a.colBad[x]); clue(X, M + H * CS + M / 2, colT[x], a.cc[x], a.colBad[x]); }
   for (const red of [false, true]) { let d = '';
     for (const [k, b] of dots) if (b === red) d += `M${k}h0`;
-    if (d) el('path', { d, stroke: red ? 'var(--bad)' : 'var(--muted)', 'stroke-width': 2.4, 'stroke-linecap': 'round', opacity: .2, class: 'lead' }, gClues); }
+    if (d) el('path', { d, stroke: red ? 'var(--bad)' : 'var(--muted)', 'stroke-width': 2.4, 'stroke-linecap': 'round', class: 'lead' }, gClues); }
   drawHint();
   if (a.done && !solved && !tutorial) win();
 }

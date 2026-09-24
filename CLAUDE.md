@@ -62,10 +62,21 @@ someone a single file to open locally, nothing else.
 
 Two findings worth not rediscovering:
 
-- `Logic.build` runs attempts against a wall clock, so a slow device can settle for a
-  different board. On cheap boards this never bites (120 easy seeds identical at 1200ms and
-  at 1ms); on big two-hoop hard boards it does (2 of 8 seeds differed, and graded medium
-  instead of hard). Saturday's daily is that setup.
+- **Generation is deterministic across devices and browsers; keep it that way.** Two things
+  broke that until 0.13.2. A random draw inside a sort comparator (region growth) made the
+  board depend on how often the engine's sort compared, which differs between Chrome and
+  Safari and even between the first and later runs in one page. And both the generator and
+  the builder stopped on a wall clock. Now they stop on work (solver nodes), and all 51
+  picker/daily setups fingerprint identically in Chrome and in Safari's engine. Never call
+  `r()` inside a comparator or a callback whose call count the engine decides, and never
+  let time decide what gets built.
+- Safari's engine runs from the command line with no install:
+  `/System/Library/Frameworks/JavaScriptCore.framework/Versions/A/Helpers/jsc engine.js logic.js test.js`
+  (use `print`). It is unthrottled, unlike the hidden browser pane, so it is where build
+  timings should be measured.
+- Two setups are slow because they rarely generate at all and the builder keeps going until
+  one does: big Blank (Wednesday's daily) and big two-hoop Carved (Brutal). Up to ~7s on a
+  Mac, measured in `jsc`.
 - Region colours are shuffled per board by `colorRegions`, so the same board looks different
   between sessions. Only the tutorial opts out.
 
