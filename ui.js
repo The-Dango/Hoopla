@@ -121,7 +121,7 @@ function renderMenu() {
   const saved = savedGame();
   $('resumeBtn').hidden = !saved;
   if (saved) $('resumeInfo').textContent = `${saved.P.daily ? 'Daily' : cap(saved.P.difficulty)} board, paused at ${fmt(saved.elapsed)}`;
-  $('menuNote').textContent = 'Everyone gets the same daily board. It changes at midnight Toronto time.';
+  $('menuNote').textContent = 'Everyone gets the same daily board. It changes at midnight Lake Ontario time.';
 }
 // ---------- the tutorial ----------
 // A board the generator made, then frozen: building it fresh each time would
