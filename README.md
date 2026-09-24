@@ -103,6 +103,34 @@ got instead.
 The four rungs on the Pick for me screen (Gentle, Steady, Tricky, Brutal) each hold two or
 three setups combining size, hoop count and difficulty, chosen at random per board.
 
+### "Another one" fits itself to the player
+
+Starting Pick for me from the menu is always from scratch, at the level chosen there. From
+then on each "Another one" is part of a run that adapts. All eleven setups sit on one ladder,
+easiest first by measured target time (about 30s to 5m), and the run keeps a skill number on
+it, starting in the middle of the chosen level.
+
+- Each finished board nudges the skill by how it went against its target time (hints and
+  slips are already in the final score; giving up counts as the worst result), compared with
+  what was expected at that board's step. A stretch that goes badly barely counts, and nor
+  does a breather that goes well. No board moves it more than a third of a step, and down
+  moves a little faster than up.
+- Each next board is drawn around it: three in five at the player's step, one a step easier,
+  one a step harder. Shape and seed stay random. A stretch board says so in its note.
+- The level shown on the finish card follows the skill, a little stickily (only once it is a
+  third of a step inside the new level), and the card says when it moves. Choosing a level on
+  the card is the player taking over: the run restarts there, and it becomes the menu choice.
+- The daily never adapts and never counts. "Another like this" after it is the daily's own
+  setup and does not count either; the run after that starts at the step nearest the daily's.
+- Let me pick never adapts. The menu's level is never changed behind the player's back.
+
+Simulated with 300 players each: a strong player starting at Gentle reaches Tricky in about
+20 boards and Brutal in about 40; one who picked too high settles within about 15; one at
+the right level stays there, with about one board in six a stretch. The skill lives only for
+the run (and in a saved game); with accounts it could follow the player. The outcome is
+measured against target times that are still estimates, so it sharpens once real solve
+times are collected.
+
 ## Hints and checks
 
 **Hint** finds the simplest available step, highlights the cells, dims the rest of the board

@@ -351,12 +351,14 @@ $('learnBack').onclick = () => showPicker('menu');
 $('learnStart').onclick = startTutorial;
 
 function renderWinPick() { // change your mind about the next board without leaving the card
-  segChoice($('winRungSeg'), Logic.RUNGS.map(r => [r.key, r.label]), settings.rung,
-    v => { settings.rung = v; saveSettings(); renderPickers(); renderWinPick(); prefetch(); });
+  // The level shown is where the run has got to; choosing one here is the player taking
+  // over, so the run restarts from it (and it becomes their menu choice too).
+  segChoice($('winRungSeg'), Logic.RUNGS.map(r => [r.key, r.label]), chainRung(),
+    v => { settings.rung = v; saveSettings(); startChain(Logic.rungSkill(v)); renderPickers(); renderWinPick(); prefetch(); });
   segChoice($('winShapeSeg'), PICK_SHAPES, settings.pickShape,
-    v => { settings.pickShape = v; saveSettings(); renderPickers(); renderWinPick(); prefetch(); });
+    v => { settings.pickShape = v; saveSettings(); nextPlan = null; renderPickers(); renderWinPick(); prefetch(); });
   const sel = lastOpts && lastOpts.sel;
-  const same = sel && sel.rung === settings.rung && sel.pickShape === settings.pickShape;
+  const same = sel && sel.rung === chainRung() && sel.pickShape === settings.pickShape;
   $('winNew').textContent = same ? 'Another one' : 'Start';
 }
 function renderPickers() {
@@ -385,35 +387,73 @@ $('optErr').onchange = e => { settings.err = e.target.checked; saveSettings(); i
 $('optQuiet').onchange = e => { settings.quiet = e.target.checked; saveSettings(); };
 
 // ---------- building ----------
-let nextUp = null, nextKey = null, building = false;
+let nextUp = null, nextKey = null, nextOpts = null, building = false;
 function ownOpts() { return { shape: settings.shape, k: settings.shape === 'blank' ? 1 : settings.k, size: settings.size,
   difficulty: settings.difficulty }; }
-function pickOpts() { return Logic.rungOptions(settings.rung, settings.pickShape); }
+// Pick for me, once under way, fits itself to the player. Starting from the menu is
+// always from scratch, at the level chosen there. Each "Another one" after that moves
+// chainSkill, the player's position on the ladder for this run of boards, by how the
+// last board went, and draws the next board around it. The menu's own level is never
+// changed behind the player's back. nextPlan is the next board drawn, held so the one
+// built ahead is the one handed out.
+// The level shown for the run (chainLevel) is a little sticky: it only changes once the
+// skill is a third of a step inside the new level, so a player on the line between two
+// is not told "moving up" and "easing back" on alternate boards.
+let chainSkill = null, chainLevel = null, nextPlan = null;
+function chainRung() { return chainSkill === null ? settings.rung : chainLevel; }
+function startChain(skill) { chainSkill = skill; chainLevel = Logic.skillRung(skill); nextPlan = null; }
+function plan() { if (!nextPlan) nextPlan = Logic.adaptPick(chainSkill, settings.pickShape); return nextPlan; }
+function planKey(pl) { return optsKey({ step: pl.step, shape: pl.opts.shape }); }
+function menuKey() { return optsKey({ rung: settings.rung, pickShape: settings.pickShape }); }
+function startFromMenu() {
+  startChain(Logic.rungSkill(settings.rung));
+  const o = Logic.rungOptions(settings.rung, settings.pickShape);
+  startPuzzle(o, menuKey(), 'pick', { step: Logic.nearestStep(o), lean: 0 });
+}
+function startNext() { const pl = plan(); nextPlan = null; startPuzzle(pl.opts, planKey(pl), 'pick', pl); }
+// After a board in the run: move the skill by how it went. Returns { rung, up } when
+// that changes the level, so the card can say so.
+function learnFrom(r, gaveUp) {
+  if (!lastOpts || lastOpts.source !== 'pick' || tutorial || chainSkill === null) return null;
+  const step = lastOpts.plan ? lastOpts.plan.step : Logic.nearestStep(lastOpts.opts), from = chainSkill;
+  chainSkill = Logic.adaptSkill(from, step, Logic.adaptOutcome(r ? r.final : 0, r ? r.par : 0, gaveUp));
+  if (Math.round(chainSkill) !== Math.round(from)) nextPlan = null; // drawn for the old step
+  const was = chainLevel, up = chainSkill > from, now = Logic.skillRung(chainSkill);
+  if (now !== was && Logic.skillRung(chainSkill + (up ? -1 : 1) / 3) === now) chainLevel = now;
+  lastOpts.sel = { rung: chainLevel, pickShape: settings.pickShape };
+  return chainLevel !== was ? { rung: chainLevel, up } : null;
+}
 function optsKey(o) { return JSON.stringify(o); }
 // "Another like this" after the daily: the daily's setup without its seed, so
 // a fresh board of the same kind. It is an ordinary puzzle, not a second daily.
 function likeOpts(o) { return { shape: o.shape, k: o.k, size: o.size, difficulty: o.difficulty, holes: !!o.holes }; }
-const likeSource = () => lastOpts && (lastOpts.source === 'daily' || lastOpts.source === 'like');
 function prefetch() { // build the likely next board quietly, in slices, while the player is busy
   if (building) return;
-  // In a daily or a board like it, the next board is another like it.
-  const like = $('picker').hidden && likeSource();
-  const view = like ? 'like' : $('viewOwn').hidden === false ? 'own' : 'pick';
-  const o = like ? likeOpts(lastOpts.opts) : view === 'own' ? ownOpts() : { rung: settings.rung, pickShape: settings.pickShape };
-  const key = optsKey(o);
+  // In a game the next board follows from where this one came from: a daily is followed
+  // by one like it, and one like it by Pick for me. On the menu, by the screen showing.
+  const src = $('picker').hidden && lastOpts ? lastOpts.source : null;
+  const view = src === 'daily' ? 'like' : src === 'own' ? 'own' : src && chainSkill !== null ? 'next'
+    : $('viewOwn').hidden === false ? 'own' : 'pick';
+  const pl = view === 'next' ? plan() : null;
+  const o = view === 'like' ? likeOpts(lastOpts.opts) : view === 'own' ? ownOpts() : view === 'next' ? pl.opts
+    : Logic.rungOptions(settings.rung, settings.pickShape);
+  const key = view === 'next' ? planKey(pl) : view === 'pick' ? menuKey() : optsKey(o);
   if (nextUp && nextKey === key) return;
   building = true;
-  const opts = view === 'pick' ? pickOpts() : o;
-  Logic.buildAsync(Engine, opts, p => { building = false; if (p) { nextUp = p; nextKey = key; } });
+  Logic.buildAsync(Engine, o, p => { building = false; if (p) { nextUp = p; nextKey = key; nextOpts = o; } });
 }
-function startPuzzle(opts, key, source) {
+function startPuzzle(opts, key, source, pl) {
   if (tutorial) endTutorial();
   lastOpts = { opts, key, source: source || (lastOpts && lastOpts.source) || 'own',
-    sel: { rung: settings.rung, pickShape: settings.pickShape } };
+    sel: { rung: settings.rung, pickShape: settings.pickShape }, plan: pl ? { step: pl.step, lean: pl.lean } : null };
   showGame(); clearSaved();
   $('busy').textContent = 'Building a puzzle…'; $('busy').classList.add('show');
   $('win').classList.remove('show'); $('board').style.opacity = .25; closeBar();
-  if (nextUp && key && nextKey === key) { const p = nextUp; nextUp = null; nextKey = null; return begin(p, opts); }
+  if (nextUp && key && nextKey === key) { // the board built ahead: take its own setup, which a
+    // menu start may have drawn differently within the same level
+    const p = nextUp; lastOpts.opts = nextOpts;
+    if (lastOpts.plan) lastOpts.plan.step = Logic.nearestStep(nextOpts);
+    nextUp = null; nextKey = null; return begin(p, nextOpts); }
   setTimeout(() => begin(Logic.build(Engine, opts), opts), 30);
 }
 function begin(p, opts) {
@@ -426,12 +466,16 @@ function begin(p, opts) {
   setTimeout(prefetch, 600);
 }
 $('menuDaily').onclick = () => { const o = Logic.dailyOptions(); startPuzzle({ ...o, daily: o.day }, null, 'daily'); };
-$('pickStart').onclick = () => startPuzzle(pickOpts(), optsKey({ rung: settings.rung, pickShape: settings.pickShape }), 'pick');
+$('pickStart').onclick = startFromMenu;
 $('ownStart').onclick = () => startPuzzle(ownOpts(), optsKey(ownOpts()), 'own');
 $('winNew').onclick = () => {
   if (tutorial) return showPicker('menu');
-  if (likeSource()) { const o = likeOpts(lastOpts.opts); return startPuzzle(o, optsKey(o), 'like'); }
-  if (lastOpts && lastOpts.source === 'pick') return startPuzzle(pickOpts(), optsKey({ rung: settings.rung, pickShape: settings.pickShape }), 'pick');
+  // After the daily, one like it; after that, a run of boards that fits itself to the
+  // player, starting at the level nearest the daily's.
+  if (lastOpts && lastOpts.source === 'daily') {
+    startChain(Logic.nearestStep(lastOpts.opts));
+    const o = likeOpts(lastOpts.opts); return startPuzzle(o, optsKey(o), 'like'); }
+  if (lastOpts && (lastOpts.source === 'pick' || lastOpts.source === 'like')) return chainSkill === null ? startFromMenu() : startNext();
   return startPuzzle(ownOpts(), optsKey(ownOpts()), 'own');
 };
 $('winMenu').onclick = () => showPicker('menu');
@@ -448,14 +492,16 @@ function pauseAndLeave() {
   if (!P || solved) return showPicker('menu');
   clearInterval(timerId);
   try { localStorage.setItem(SAVE, JSON.stringify({ P: Logic.toJSON(P), marks: Array.from(marks), elapsed,
-    hints, placements, shows, opts: lastOpts && lastOpts.opts, key: lastOpts && lastOpts.key, source: lastOpts && lastOpts.source })); } catch (e) {}
+    hints, placements, shows, opts: lastOpts && lastOpts.opts, key: lastOpts && lastOpts.key, source: lastOpts && lastOpts.source,
+    plan: lastOpts && lastOpts.plan, chain: chainSkill, level: chainLevel })); } catch (e) {}
   closeBar(); showPicker('menu');
 }
 $('resumeBtn').onclick = () => { const s = savedGame(); if (!s) return;
   showGame(); clearSaved();
   P = Logic.fromJSON(s.P); marks = Uint8Array.from(s.marks); givenSet = new Set(P.givens); history = [];
   solved = false; revealed = false; gaveUp = false; hints = s.hints || 0; placements = s.placements || 0; shows = s.shows || 0;
-  placedAt = new Map(); lastOpts = s.opts ? { opts: s.opts, key: s.key, source: s.source } : null;
+  placedAt = new Map(); lastOpts = s.opts ? { opts: s.opts, key: s.key, source: s.source, plan: s.plan || null } : null;
+  chainSkill = typeof s.chain === 'number' ? s.chain : null; chainLevel = s.level || (chainSkill === null ? null : Logic.skillRung(chainSkill)); nextPlan = null;
   colorRegions(); startTimer(s.elapsed || 0); buildBoard(); draw(); renderRules(); renderDev(); renderCounts(); renderNote();
 };
 window.addEventListener('pagehide', () => { if (P && !solved && !$('game').hidden) pauseAndLeave(); });
@@ -470,10 +516,12 @@ $('quit').onclick = () => {
     ['Save and go to menu', true, pauseAndLeave],
     ['Give up and see it', false, () => {
       gaveUp = true; revealed = true; solved = true; clearInterval(timerId);
+      const moved = learnFrom(null, true);
       marks = Logic.startMarks(P); for (const c of P.solution) marks[c] = STAR; closeBar(); draw();
       if (P.daily) { try { localStorage.setItem(NSKEY + 'daily-' + P.daily, JSON.stringify({ gaveUp: true })); } catch (e) {} }
       $('winTitle').textContent = 'Here it is';
-      $('winScore').innerHTML = `<dd class="note">No score for a puzzle you gave up on. Take a look at how it fits together.</dd>`;
+      $('winScore').innerHTML = `<dd class="note">No score for a puzzle you gave up on. Take a look at how it fits together.</dd>`
+        + (moved ? `<dd class="note">${levelNews(moved)}</dd>` : '');
       $('winPick').hidden = true;
       $('winMenu').hidden = false;
       $('winNew').textContent = P.daily ? 'Another like this' : 'Another one';
@@ -503,6 +551,7 @@ function renderNote() {
   if (P.daily) parts.push(`Daily puzzle for ${P.daily}.`);
   else if (P.difficulty !== P.asked && P.asked) parts.push(`This board didn't come out ${P.asked}, so it's ${P.difficulty}.`);
   else parts.push(`${cap(P.difficulty)} puzzle.`);
+  if (lastOpts && lastOpts.source === 'pick' && lastOpts.plan && lastOpts.plan.lean > 0) parts.push('A step up from your usual, to stretch you.');
   if (g) parts.push(`${g === 1 ? '1 hoop is' : g + ' hoops are'} placed for you to start.`);
   $('note').textContent = parts.join(' ');
   $('gameTitle').textContent = P.daily ? 'Daily puzzle' : `${cap(P.difficulty)} · ${P.W}×${P.H}`;
@@ -679,6 +728,10 @@ function draw(winAnim) {
   drawHint();
   if (a.done && !solved && !tutorial) win();
 }
+function levelNews(m) {
+  const label = (Logic.RUNGS.find(r => r.key === m.rung) || {}).label || m.rung;
+  return m.up ? `You've been flying. Moving you up to ${label}.` : `Easing back to ${label} for a bit.`;
+}
 function win() {
   solved = true; tick(); clearInterval(timerId); closeBar(); draw(true); clearSaved();
   const extra = Math.max(0, placements - need()), r = Logic.result(P, elapsed, hints, extra, shows), c = r.costs;
@@ -694,6 +747,8 @@ function win() {
     + `<dt class="total">Final</dt><dd class="total">${fmt(r.final)}</dd>`
     + `<dt>Target</dt><dd>${fmt(r.par)}</dd><dd class="note">${under}</dd>`
     + `<dd class="note">Puzzle code ${P.code || '—'} · build ${BUILD}</dd>`;
+  const moved = learnFrom(r, false);
+  if (moved) $('winScore').innerHTML += `<dd class="note">${levelNews(moved)}</dd>`;
   const fromPick = lastOpts && lastOpts.source === 'pick';
   $('winPick').hidden = !fromPick;
   if (fromPick) renderWinPick();
@@ -990,6 +1045,6 @@ document.addEventListener('keydown', e => {
   else if (e.key === 'Escape') $('quit').click();
 });
 
-window.__puzzle = () => P; window.__marks = () => [...marks]; // for testing
+window.__puzzle = () => P; window.__marks = () => [...marks]; window.__chain = () => chainSkill; // for testing
 renderPickers(); showPicker('menu');
 })();

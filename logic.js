@@ -268,6 +268,56 @@ const Logic = (() => {
       { k: 2, size: 2, difficulty: 'hard' }, { k: 2, size: 2, difficulty: 'hard', holes: true }, { k: 2, size: 0, difficulty: 'hard' }] },
   ];
   const PICKER_SHAPES = ['square', 'rectangle', 'octagon', 'carved'];
+  // ---- fitting "Another one" to the player ----
+  // Every Pick-for-me setup on one ladder, easiest first, ordered by measured target
+  // time (about 30s at the bottom to 5m at the top, measured 2026-09-23). A player's
+  // skill is a position on it, kept on the device; each finished board nudges it a
+  // little, and each next board is drawn around it with some variety either side.
+  const LADDER = [['gentle', 1], ['gentle', 0], ['steady', 0], ['steady', 1], ['steady', 2],
+    ['tricky', 0], ['tricky', 2], ['tricky', 1], ['brutal', 2], ['brutal', 1], ['brutal', 0]]
+    .map(([rung, i]) => ({ rung, setup: RUNGS.find(r => r.key === rung).setups[i] }));
+  const TOP = LADDER.length - 1;
+  const clampStep = n => Math.max(0, Math.min(TOP, n));
+  // Starting skill for a level the player chose: the middle of that level's steps.
+  function rungSkill(rungKey) {
+    const steps = LADDER.map((s, i) => s.rung === rungKey ? i : -1).filter(i => i >= 0);
+    return steps.length ? (steps[0] + steps[steps.length - 1]) / 2 : 0.5;
+  }
+  function skillRung(skill) { return LADDER[clampStep(Math.round(skill))].rung; }
+  // The step nearest a setup that is not on the ladder, such as a daily's.
+  function nearestStep(o) {
+    let best = 0, bestD = Infinity;
+    LADDER.forEach((s, i) => { const u = s.setup;
+      const d = Math.abs((u.k || 1) - (o.k || 1)) * 2 + Math.abs((u.size ? 1 : 0) - (o.size ? 1 : 0))
+        + Math.abs(level({ size: u.size, difficulty: u.difficulty }) - level({ size: o.size, difficulty: o.difficulty }))
+        + (!!u.holes !== !!o.holes ? 0.5 : 0);
+      if (d < bestD) { bestD = d; best = i; } });
+    return best;
+  }
+  // Most boards at the player's own step; one in five a step easier (a breather), one in
+  // five a step harder (a stretch). Never further than one step from where they are.
+  function adaptPick(skill, shape, rnd = Math.random) {
+    const base = clampStep(Math.round(skill)), u = rnd();
+    const step = clampStep(base + (u < 0.2 ? -1 : u >= 0.8 ? 1 : 0));
+    const s = shape && shape !== 'random' ? shape : PICKER_SHAPES[Math.floor(rnd() * PICKER_SHAPES.length)];
+    return { opts: { shape: s, holes: false, ...LADDER[step].setup, rung: LADDER[step].rung }, step, lean: step - base };
+  }
+  // How a board went, 0 to 1: 0.5 is right on the target time, 1 is a third of it or
+  // better, 0 is half as long again, or giving up. Hints and slips are already in final.
+  function adaptOutcome(final, par, gaveUp) {
+    if (gaveUp || !par) return 0;
+    return Math.max(0, Math.min(1, 1.25 - 0.75 * final / par));
+  }
+  // Nudge skill by how the board went against what was expected at that step: a stretch
+  // that goes badly barely counts, and neither does a breather that goes well. Down moves
+  // a little faster than up, since a run of boards too hard drives people off sooner than
+  // a run too easy, and no single board moves it more than a third of a step.
+  const K_UP = 0.5, K_DOWN = 0.7, MAX_NUDGE = 0.35;
+  function adaptSkill(skill, step, outcome) {
+    const expect = 1 / (1 + Math.exp(-(skill - step) * 1.1));
+    const d = (outcome - expect) * (outcome < expect ? K_DOWN : K_UP);
+    return Math.max(0, Math.min(TOP, skill + Math.max(-MAX_NUDGE, Math.min(MAX_NUDGE, d))));
+  }
   function rungOptions(rungKey, shape, rnd = Math.random) {
     const rung = RUNGS.find(r => r.key === rungKey) || RUNGS[0];
     const setup = rung.setups[Math.floor(rnd() * rung.setups.length)];
@@ -296,6 +346,7 @@ const Logic = (() => {
     for (let c = 0; c < marks.length; c++) if ((marks[c] === STAR && !sol.has(c)) || (marks[c] === DOT && sol.has(c))) out.push(c);
     return out;
   }
-  return { EMPTY, DOT, STAR, START, units, startMarks, autoBlanks, hint, grade, build, buildAsync, dailyOptions, dailyKey, nextDailyReset, msUntilDailyReset, DAILY_TZ, WEEK, RUNGS, PICKER_SHAPES, rungOptions, toJSON, fromJSON, code, parseCode, level, costs, par: parFromTrace, parFromTrace, result, wrongCells };
+  return { EMPTY, DOT, STAR, START, units, startMarks, autoBlanks, hint, grade, build, buildAsync, dailyOptions, dailyKey, nextDailyReset, msUntilDailyReset, DAILY_TZ, WEEK, RUNGS, PICKER_SHAPES, rungOptions, toJSON, fromJSON, code, parseCode, level, costs, par: parFromTrace, parFromTrace, result, wrongCells,
+    LADDER, rungSkill, skillRung, nearestStep, adaptPick, adaptOutcome, adaptSkill };
 })();
 if (typeof module !== 'undefined') module.exports = Logic;
