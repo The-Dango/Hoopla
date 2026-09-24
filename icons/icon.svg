@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Hoopla">
   <title>Hoopla</title>
-  <rect width="512" height="512" fill="#E4E9EF"/>
+  <rect width="512" height="512" fill="#E8F2FB"/>
   <!-- The hoop, in the exact coordinates drawHoop() uses in ui.js, scaled to fit. -->
   <g transform="translate(256 256) scale(8.9)">
     <circle cx="1.2" cy="2.2" r="14" fill="none" stroke="#1C2541" stroke-width="8" opacity=".16"/>

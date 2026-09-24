@@ -321,7 +321,7 @@ square on Sunday through a two-hoop hard board on Saturday) plus a hash of the d
 seed. Everyone gets the same board. Leaving and resuming is fine; giving up marks the day as
 spent.
 
-The date is read in **New York time** (`DAILY_TZ` in `logic.js`), not the device's own
+The date is read in **Toronto time** (`DAILY_TZ` in `logic.js`), not the device's own
 timezone, so the board changes at midnight ET for everyone on earth at the same instant.
 No time server is contacted: the device clock is already kept accurate by the OS, and the
 only thing that needed fixing was which timezone the date gets read in. This also means the
@@ -397,7 +397,7 @@ rebuilds the exact board, the stamp says which generator built it.
 - No accounts, so nothing follows a player between devices.
 - The daily is the same board for everyone **only within one build**, since each device
   generates it. Two testers on different builds can get different boards. Timezone is no
-  longer a factor: the rollover is midnight New York for everyone. Device speed no longer
+  longer a factor: the rollover is midnight Toronto for everyone. Device speed no longer
   is either — see the puzzle code section.
 - The rollover still trusts the device clock, so someone who sets their clock forward can
   play ahead. Not worth solving before the backend does it properly.

@@ -206,12 +206,12 @@ const Logic = (() => {
     { shape: 'rectangle', k: 2, size: 0, difficulty: 'medium' },
     { shape: 'square',    k: 2, size: 2, difficulty: 'hard' },     // Saturday
   ];
-  // The daily rolls over at midnight in New York, for everyone, wherever they are.
+  // The daily rolls over at midnight in Toronto, for everyone, wherever they are.
   // Reading the device's own midnight would hand players in different timezones
   // different boards on the same date. No time server is involved: the device clock
   // is already kept accurate by the OS, and the only thing that needed fixing was
   // which timezone the date gets read in. Change DAILY_TZ to 'UTC' to move the reset.
-  const DAILY_TZ = 'America/New_York';
+  const DAILY_TZ = 'America/Toronto';
   const TZ_FMT = new Intl.DateTimeFormat('en-US', { timeZone: DAILY_TZ, year: 'numeric',
     month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
 
