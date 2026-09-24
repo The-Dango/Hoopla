@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Hoopla</title>
-<meta name="build" content="0.15.2 · 2026-09-23">
+<meta name="build" content="0.15.3 · 2026-09-23">
 <meta name="description" content="A logic puzzle game in the family of Sudoku, Star Battle and Queens. Drop hoops so every region, row and column holds the right number, and no two hoops ever touch.">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
@@ -229,20 +229,22 @@ details.dev summary { cursor: pointer; font-weight: 600; min-height: 32px; }
 @media (prefers-reduced-motion: reduce) { #game.dialog-up .boardbox { filter: grayscale(1) contrast(.2) opacity(.35); } }
 .dialognote { color: var(--muted); font-size: .94rem; margin: 0 0 16px; }
 #dialogBtns { flex-wrap: wrap; gap: 10px; }
-/* The way out sits back from the two real answers. */
-#dialogBtns .quietbtn { background: none; border-color: transparent; color: var(--muted); box-shadow: none;
-  text-decoration: underline; text-underline-offset: 3px; font-size: .9rem; font-weight: 500; }
-#dialogBtns .quietbtn:hover { color: var(--ink); border-color: transparent; transform: none; box-shadow: none; }
+/* The way out sits back from the real answers. */
+.quietbtn { background: none !important; border-color: transparent !important; color: var(--muted); box-shadow: none !important;
+  text-decoration: underline; text-underline-offset: 3px; font-size: .95rem; font-weight: 600; transform: none !important; }
+.quietbtn:hover { color: var(--ink); }
 .card { background: var(--panel); border-radius: 22px; padding: 20px 22px; text-align: center; margin: auto;
   box-shadow: 0 7px 0 var(--shadow); border: 2px solid var(--edge); width: min(420px, 100%); max-height: 100%; overflow-y: auto; }
 .card h2 { margin: 0 0 8px; font-size: 1.6rem; letter-spacing: -0.02em; }
 /* the finish card wears the winning colour across its top */
 #win .card { box-shadow: inset 0 12px 0 var(--sun), 0 7px 0 var(--shadow); padding-top: 28px; }
 .card .rowbtns { justify-content: center; }
-.again { display: flex; flex-direction: column; gap: 8px; margin: 0; }
-.again hr, .card hr { border: 0; border-top: 2px dashed var(--soft); margin: 12px 0; width: 100%; }
-.again .seg { justify-content: center; }
-.again .seg button { padding: 5px 12px; min-height: 36px; font-size: .9rem; }
+/* One way on that matters, two ways to adjust it, and a way out. */
+.winbtns { display: flex; flex-direction: column; gap: 12px; }
+.winbtns #winNew { width: 100%; font-size: 1.15rem; padding: 14px 18px; }
+.winstep { display: flex; gap: 10px; }
+.winstep button { flex: 1 1 0; }
+.winbtns #winMenu { align-self: center; min-width: 120px; }
 .score { display: grid; grid-template-columns: auto auto; gap: 2px 0; margin: 4px 0 14px; text-align: left; font-variant-numeric: tabular-nums; }
 .score dt { color: var(--muted); } .score dd { margin: 0; padding-left: 18px; text-align: right; font-weight: 600; }
 .score .note { grid-column: 1 / -1; padding-left: 0; font-size: .85rem; color: var(--muted); text-align: center; font-weight: 400; }
@@ -379,14 +381,11 @@ details.dev summary { cursor: pointer; font-weight: 600; min-height: 32px; }
     <svg id="board" role="application" aria-label="Puzzle board"></svg>
     <div class="busy" id="busy">Building a puzzle…</div>
     <div class="overlay" id="win"><div class="card"><h2 id="winTitle">Solved</h2><dl class="score" id="winScore"></dl>
-      <div class="again" id="winPick" hidden>
-        <hr>
-        <div class="seg" id="winRungSeg"></div>
-        <hr>
-        <div class="seg" id="winShapeSeg"></div>
-      </div>
-      <hr>
-      <div class="rowbtns"><button class="primary" id="winNew">Another one</button><button id="winMenu">Menu</button></div></div></div>
+      <div class="winbtns">
+        <button class="primary" id="winNew">Another one</button>
+        <div class="winstep" id="winStep" hidden><button id="winEasier">Easier</button><button id="winHarder">Harder</button></div>
+        <button class="quietbtn" id="winMenu">Menu</button>
+      </div></div></div>
   </div>
   <div class="overlay" id="dialog"><div class="card">
     <h2 id="dialogTitle"></h2>
@@ -1042,9 +1041,14 @@ const Logic = (() => {
   // five a step harder (a stretch). Never further than one step from where they are.
   function adaptPick(skill, shape, rnd = Math.random) {
     const base = clampStep(Math.round(skill)), u = rnd();
-    const step = clampStep(base + (u < 0.2 ? -1 : u >= 0.8 ? 1 : 0));
+    const pl = stepPick(base + (u < 0.2 ? -1 : u >= 0.8 ? 1 : 0), shape, rnd);
+    return { ...pl, lean: pl.step - base };
+  }
+  // A board at exactly this step: what the finish card's Easier and Harder hand out.
+  function stepPick(step, shape, rnd = Math.random) {
+    step = clampStep(step);
     const s = shape && shape !== 'random' ? shape : PICKER_SHAPES[Math.floor(rnd() * PICKER_SHAPES.length)];
-    return { opts: { shape: s, holes: false, ...LADDER[step].setup, rung: LADDER[step].rung }, step, lean: step - base };
+    return { opts: { shape: s, holes: false, ...LADDER[step].setup, rung: LADDER[step].rung }, step, lean: 0 };
   }
   // How a board went, 0 to 1: 0.5 is right on the target time, 1 is a third of it or
   // better, 0 is half as long again, or giving up. Hints and slips are already in final.
@@ -1091,7 +1095,7 @@ const Logic = (() => {
     return out;
   }
   return { EMPTY, DOT, STAR, START, units, startMarks, autoBlanks, hint, grade, build, buildAsync, dailyOptions, dailyKey, nextDailyReset, msUntilDailyReset, DAILY_TZ, WEEK, RUNGS, PICKER_SHAPES, rungOptions, toJSON, fromJSON, code, parseCode, level, costs, par: parFromTrace, parFromTrace, result, wrongCells,
-    LADDER, rungSkill, skillRung, nearestStep, adaptPick, adaptOutcome, adaptSkill };
+    LADDER, rungSkill, skillRung, nearestStep, adaptPick, stepPick, adaptOutcome, adaptSkill };
 })();
 if (typeof module !== 'undefined') module.exports = Logic;
 
@@ -1344,7 +1348,7 @@ function tutDone() {
     ? 'With all three helpers on, the board will keep itself tidy while you think.'
     : on ? 'The other helpers are under the gear whenever you want them.'
          : 'The helpers are all under the gear if you change your mind.'}</dd>`;
-  $('winPick').hidden = true;
+  $('winStep').hidden = true;
   $('winMenu').hidden = true;
   $('winNew').textContent = 'Go cause a Hoopla';
   $('win').classList.add('show'); confetti();
@@ -1447,17 +1451,26 @@ $('menuLearn').onclick = () => { renderLearn(); showPicker('learn'); };
 $('learnBack').onclick = () => showPicker('menu');
 $('learnStart').onclick = startTutorial;
 
-function renderWinPick() { // change your mind about the next board without leaving the card
-  // The level shown is where the run has got to; choosing one here is the player taking
-  // over, so the run restarts from it (and it becomes their menu choice too).
-  segChoice($('winRungSeg'), Logic.RUNGS.map(r => [r.key, r.label]), chainRung(),
-    v => { settings.rung = v; saveSettings(); startChain(Logic.rungSkill(v)); renderPickers(); renderWinPick(); prefetch(); });
-  segChoice($('winShapeSeg'), PICK_SHAPES, settings.pickShape,
-    v => { settings.pickShape = v; saveSettings(); nextPlan = null; renderPickers(); renderWinPick(); prefetch(); });
-  const sel = lastOpts && lastOpts.sel;
-  const same = sel && sel.rung === chainRung() && sel.pickShape === settings.pickShape;
-  $('winNew').textContent = same ? 'Another one' : 'Start';
+// Easier and Harder on the finish card, whenever "Another one" would carry on a run:
+// a board exactly one step either side of the one just played, and the run carries on
+// from there. A player saying so is a stronger signal than one board's time, so it
+// moves a whole step where a finished board moves a third of one at most. The menu's
+// own level is left alone. Neither shows past the end of the ladder.
+function runGoesOn() { return !!lastOpts && (lastOpts.source === 'pick' || lastOpts.source === 'like') && chainSkill !== null; }
+function playedStep() { return lastOpts.plan ? lastOpts.plan.step : Logic.nearestStep(lastOpts.opts); }
+function renderWinStep() {
+  const on = runGoesOn(), at = on ? playedStep() : 0;
+  $('winStep').hidden = !on;
+  $('winEasier').hidden = !on || at <= 0;
+  $('winHarder').hidden = !on || at >= Logic.LADDER.length - 1;
 }
+function stepTo(delta) {
+  const step = playedStep() + delta; startChain(step);
+  const pl = Logic.stepPick(step, settings.pickShape);
+  startPuzzle(pl.opts, planKey(pl), 'pick', pl);
+}
+$('winEasier').onclick = () => stepTo(-1);
+$('winHarder').onclick = () => stepTo(1);
 function renderPickers() {
   segChoice($('rungSeg'), Logic.RUNGS.map(r => [r.key, r.label]), settings.rung, v => { settings.rung = v; saveSettings(); renderPickers(); prefetch(); });
   segChoice($('pickShapeSeg'), PICK_SHAPES, settings.pickShape, v => { settings.pickShape = v; saveSettings(); renderPickers(); prefetch(); });
@@ -1497,7 +1510,6 @@ function ownOpts() { return { shape: settings.shape, k: settings.shape === 'blan
 // skill is a third of a step inside the new level, so a player on the line between two
 // is not told "moving up" and "easing back" on alternate boards.
 let chainSkill = null, chainLevel = null, nextPlan = null;
-function chainRung() { return chainSkill === null ? settings.rung : chainLevel; }
 function startChain(skill) { chainSkill = skill; chainLevel = Logic.skillRung(skill); nextPlan = null; }
 function plan() { if (!nextPlan) nextPlan = Logic.adaptPick(chainSkill, settings.pickShape); return nextPlan; }
 function planKey(pl) { return optsKey({ step: pl.step, shape: pl.opts.shape }); }
@@ -1517,7 +1529,6 @@ function learnFrom(r, gaveUp) {
   if (Math.round(chainSkill) !== Math.round(from)) nextPlan = null; // drawn for the old step
   const was = chainLevel, up = chainSkill > from, now = Logic.skillRung(chainSkill);
   if (now !== was && Logic.skillRung(chainSkill + (up ? -1 : 1) / 3) === now) chainLevel = now;
-  lastOpts.sel = { rung: chainLevel, pickShape: settings.pickShape };
   return chainLevel !== was ? { rung: chainLevel, up } : null;
 }
 function optsKey(o) { return JSON.stringify(o); }
@@ -1542,7 +1553,7 @@ function prefetch() { // build the likely next board quietly, in slices, while t
 function startPuzzle(opts, key, source, pl) {
   if (tutorial) endTutorial();
   lastOpts = { opts, key, source: source || (lastOpts && lastOpts.source) || 'own',
-    sel: { rung: settings.rung, pickShape: settings.pickShape }, plan: pl ? { step: pl.step, lean: pl.lean } : null };
+    plan: pl ? { step: pl.step, lean: pl.lean } : null };
   showGame(); clearSaved();
   $('busy').textContent = 'Building a puzzle…'; $('busy').classList.add('show');
   $('win').classList.remove('show'); $('board').style.opacity = .25; closeBar();
@@ -1619,7 +1630,7 @@ $('quit').onclick = () => {
       $('winTitle').textContent = 'Here it is';
       $('winScore').innerHTML = `<dd class="note">No score for a puzzle you gave up on. Take a look at how it fits together.</dd>`
         + (moved ? `<dd class="note">${levelNews(moved)}</dd>` : '');
-      $('winPick').hidden = true;
+      renderWinStep();
       $('winMenu').hidden = false;
       $('winNew').textContent = P.daily ? 'Another like this' : 'Another one';
       $('win').classList.add('show');
@@ -1838,20 +1849,16 @@ function win() {
   const clean = !hints && !extra && !shows;
   $('winTitle').textContent = clean ? 'Clean solve!' : isBest ? 'Solved, new best!' : 'Solved';
   const row = (label, n, each, cost) => n ? `<dt>${label} ${n} × ${each}s</dt><dd>+${fmt(cost)}</dd>` : '';
-  const under = r.vsPar === 0 ? 'exactly on target' : r.vsPar < 0 ? `${fmt(-r.vsPar)} under the target` : `${fmt(r.vsPar)} over the target`;
   $('winScore').innerHTML = `<dt>Time</dt><dd>${fmt(elapsed)}</dd>`
     + row('Hints', hints, c.hint, r.hintCost) + row('Extra hoops', extra, c.extraStar, r.extraCost) + row('Reveals', shows, c.reveal, r.revealCost)
     + `<dt class="total">Final</dt><dd class="total">${fmt(r.final)}</dd>`
-    + `<dt>Target</dt><dd>${fmt(r.par)}</dd><dd class="note">${under}</dd>`
-    + `<dd class="note">Puzzle code ${P.code || '—'} · build ${BUILD}</dd>`;
+    + `<dt>Target</dt><dd>${fmt(r.par)}</dd>`;
   const moved = learnFrom(r, false);
   if (moved) $('winScore').innerHTML += `<dd class="note">${levelNews(moved)}</dd>`;
-  const fromPick = lastOpts && lastOpts.source === 'pick';
-  $('winPick').hidden = !fromPick;
-  if (fromPick) renderWinPick();
+  renderWinStep();
   // There is only one daily a day, so its way onward is a fresh board of the same kind.
   $('winMenu').hidden = false;
-  if (P.daily) $('winNew').textContent = 'Another like this'; else if (!fromPick) $('winNew').textContent = 'Another one';
+  $('winNew').textContent = P.daily ? 'Another like this' : 'Another one';
   if (P.daily) { try { localStorage.setItem(NSKEY + 'daily-' + P.daily, JSON.stringify({ final: r.final, time: elapsed })); } catch (e) {} }
   renderDev();
   setTimeout(() => { $('win').classList.add('show'); confetti(); }, 700);

@@ -298,9 +298,14 @@ const Logic = (() => {
   // five a step harder (a stretch). Never further than one step from where they are.
   function adaptPick(skill, shape, rnd = Math.random) {
     const base = clampStep(Math.round(skill)), u = rnd();
-    const step = clampStep(base + (u < 0.2 ? -1 : u >= 0.8 ? 1 : 0));
+    const pl = stepPick(base + (u < 0.2 ? -1 : u >= 0.8 ? 1 : 0), shape, rnd);
+    return { ...pl, lean: pl.step - base };
+  }
+  // A board at exactly this step: what the finish card's Easier and Harder hand out.
+  function stepPick(step, shape, rnd = Math.random) {
+    step = clampStep(step);
     const s = shape && shape !== 'random' ? shape : PICKER_SHAPES[Math.floor(rnd() * PICKER_SHAPES.length)];
-    return { opts: { shape: s, holes: false, ...LADDER[step].setup, rung: LADDER[step].rung }, step, lean: step - base };
+    return { opts: { shape: s, holes: false, ...LADDER[step].setup, rung: LADDER[step].rung }, step, lean: 0 };
   }
   // How a board went, 0 to 1: 0.5 is right on the target time, 1 is a third of it or
   // better, 0 is half as long again, or giving up. Hints and slips are already in final.
@@ -347,6 +352,6 @@ const Logic = (() => {
     return out;
   }
   return { EMPTY, DOT, STAR, START, units, startMarks, autoBlanks, hint, grade, build, buildAsync, dailyOptions, dailyKey, nextDailyReset, msUntilDailyReset, DAILY_TZ, WEEK, RUNGS, PICKER_SHAPES, rungOptions, toJSON, fromJSON, code, parseCode, level, costs, par: parFromTrace, parFromTrace, result, wrongCells,
-    LADDER, rungSkill, skillRung, nearestStep, adaptPick, adaptOutcome, adaptSkill };
+    LADDER, rungSkill, skillRung, nearestStep, adaptPick, stepPick, adaptOutcome, adaptSkill };
 })();
 if (typeof module !== 'undefined') module.exports = Logic;

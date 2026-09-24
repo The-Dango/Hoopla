@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Hoopla</title>
-<meta name="build" content="0.15.2 · 2026-09-23">
+<meta name="build" content="0.15.3 · 2026-09-23">
 <meta name="description" content="A logic puzzle game in the family of Sudoku, Star Battle and Queens. Drop hoops so every region, row and column holds the right number, and no two hoops ever touch.">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
@@ -229,20 +229,22 @@ details.dev summary { cursor: pointer; font-weight: 600; min-height: 32px; }
 @media (prefers-reduced-motion: reduce) { #game.dialog-up .boardbox { filter: grayscale(1) contrast(.2) opacity(.35); } }
 .dialognote { color: var(--muted); font-size: .94rem; margin: 0 0 16px; }
 #dialogBtns { flex-wrap: wrap; gap: 10px; }
-/* The way out sits back from the two real answers. */
-#dialogBtns .quietbtn { background: none; border-color: transparent; color: var(--muted); box-shadow: none;
-  text-decoration: underline; text-underline-offset: 3px; font-size: .9rem; font-weight: 500; }
-#dialogBtns .quietbtn:hover { color: var(--ink); border-color: transparent; transform: none; box-shadow: none; }
+/* The way out sits back from the real answers. */
+.quietbtn { background: none !important; border-color: transparent !important; color: var(--muted); box-shadow: none !important;
+  text-decoration: underline; text-underline-offset: 3px; font-size: .95rem; font-weight: 600; transform: none !important; }
+.quietbtn:hover { color: var(--ink); }
 .card { background: var(--panel); border-radius: 22px; padding: 20px 22px; text-align: center; margin: auto;
   box-shadow: 0 7px 0 var(--shadow); border: 2px solid var(--edge); width: min(420px, 100%); max-height: 100%; overflow-y: auto; }
 .card h2 { margin: 0 0 8px; font-size: 1.6rem; letter-spacing: -0.02em; }
 /* the finish card wears the winning colour across its top */
 #win .card { box-shadow: inset 0 12px 0 var(--sun), 0 7px 0 var(--shadow); padding-top: 28px; }
 .card .rowbtns { justify-content: center; }
-.again { display: flex; flex-direction: column; gap: 8px; margin: 0; }
-.again hr, .card hr { border: 0; border-top: 2px dashed var(--soft); margin: 12px 0; width: 100%; }
-.again .seg { justify-content: center; }
-.again .seg button { padding: 5px 12px; min-height: 36px; font-size: .9rem; }
+/* One way on that matters, two ways to adjust it, and a way out. */
+.winbtns { display: flex; flex-direction: column; gap: 12px; }
+.winbtns #winNew { width: 100%; font-size: 1.15rem; padding: 14px 18px; }
+.winstep { display: flex; gap: 10px; }
+.winstep button { flex: 1 1 0; }
+.winbtns #winMenu { align-self: center; min-width: 120px; }
 .score { display: grid; grid-template-columns: auto auto; gap: 2px 0; margin: 4px 0 14px; text-align: left; font-variant-numeric: tabular-nums; }
 .score dt { color: var(--muted); } .score dd { margin: 0; padding-left: 18px; text-align: right; font-weight: 600; }
 .score .note { grid-column: 1 / -1; padding-left: 0; font-size: .85rem; color: var(--muted); text-align: center; font-weight: 400; }
@@ -379,14 +381,11 @@ details.dev summary { cursor: pointer; font-weight: 600; min-height: 32px; }
     <svg id="board" role="application" aria-label="Puzzle board"></svg>
     <div class="busy" id="busy">Building a puzzle…</div>
     <div class="overlay" id="win"><div class="card"><h2 id="winTitle">Solved</h2><dl class="score" id="winScore"></dl>
-      <div class="again" id="winPick" hidden>
-        <hr>
-        <div class="seg" id="winRungSeg"></div>
-        <hr>
-        <div class="seg" id="winShapeSeg"></div>
-      </div>
-      <hr>
-      <div class="rowbtns"><button class="primary" id="winNew">Another one</button><button id="winMenu">Menu</button></div></div></div>
+      <div class="winbtns">
+        <button class="primary" id="winNew">Another one</button>
+        <div class="winstep" id="winStep" hidden><button id="winEasier">Easier</button><button id="winHarder">Harder</button></div>
+        <button class="quietbtn" id="winMenu">Menu</button>
+      </div></div></div>
   </div>
   <div class="overlay" id="dialog"><div class="card">
     <h2 id="dialogTitle"></h2>

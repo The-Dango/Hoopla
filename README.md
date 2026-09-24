@@ -117,9 +117,14 @@ it, starting in the middle of the chosen level.
   moves a little faster than up.
 - Each next board is drawn around it: three in five at the player's step, one a step easier,
   one a step harder. Shape and seed stay random. A stretch board says so in its note.
-- The level shown on the finish card follows the skill, a little stickily (only once it is a
-  third of a step inside the new level), and the card says when it moves. Choosing a level on
-  the card is the player taking over: the run restarts there, and it becomes the menu choice.
+- The finish card says when the run's level changes, a little stickily (only once the skill
+  is a third of a step inside the new level), so a player on the line is not told up and down
+  on alternate boards.
+- Below "Another one" the card offers Easier and Harder: a board exactly one step either side
+  of the one just played, with the run carrying on from there. A player saying so moves the
+  skill a whole step, where a finished board moves it a third of one at most. They show after
+  any board a run continues from (including a give-up), never past either end of the ladder,
+  and they leave the menu's level alone.
 - The daily never adapts and never counts. "Another like this" after it is the daily's own
   setup and does not count either; the run after that starts at the step nearest the daily's.
 - Let me pick never adapts. The menu's level is never changed behind the player's back.
