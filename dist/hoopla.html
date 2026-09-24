@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Hoopla</title>
-<meta name="build" content="0.15.5 · 2026-09-24">
+<meta name="build" content="0.15.6 · 2026-09-24">
 <meta name="description" content="A logic puzzle game in the family of Sudoku, Star Battle and Queens. Drop hoops so every region, row and column holds the right number, and no two hoops ever touch.">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
@@ -130,8 +130,12 @@ button.primary.big small { color: var(--prisub); }
 .seg button:active:not(:disabled) { transform: scale(.96); box-shadow: none; }
 .seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); font-weight: 700; }
 .rowbtns button { padding: 12px 22px; }
-fieldset { border: 0; padding: 0; margin: 0; }
-legend { font-weight: 700; margin-bottom: 8px; padding: 0; }
+/* A labelled group of choices. Not a <fieldset>: Safari (26.6, and 0.14.1 had it too)
+   sizes a fieldset in a flex column as if its legend were there twice, about 31px too
+   tall per group, until anything makes it redraw, so the screen jumped the moment the
+   pointer reached a button. role="group" with a label keeps what the fieldset said. */
+.group { margin: 0; }
+.group > .glabel { font-weight: 700; margin-bottom: 8px; }
 .rules { color: var(--muted); margin: 0; font-size: .92rem; }
 /* ---- how to play ---- */
 .learn { display: flex; flex-direction: column; gap: 8px; }
@@ -294,17 +298,17 @@ details.dev summary { cursor: pointer; font-weight: 600; min-height: 32px; }
 
   <div class="view card2" id="viewPick" hidden>
     <h2>Pick for me</h2>
-    <fieldset><legend>How do you want it?</legend><div class="seg" id="rungSeg"></div></fieldset>
-    <fieldset><legend>Board</legend><div class="seg" id="pickShapeSeg"></div></fieldset>
+    <div class="group" role="group" aria-labelledby="rungLabel"><div class="glabel" id="rungLabel">How do you want it?</div><div class="seg" id="rungSeg"></div></div>
+    <div class="group" role="group" aria-labelledby="pickShapeLabel"><div class="glabel" id="pickShapeLabel">Board</div><div class="seg" id="pickShapeSeg"></div></div>
     <div class="rowbtns"><button class="primary" id="pickStart">Start</button><button id="pickBack">Back</button></div>
   </div>
 
   <div class="view card2" id="viewOwn" hidden>
     <h2>Let me pick</h2>
-    <fieldset><legend>Board shape</legend><div class="seg" id="shapeSeg"></div></fieldset>
-    <fieldset id="kField"><legend>Hoops per region</legend><div class="seg" id="kSeg"></div></fieldset>
-    <fieldset><legend>Size</legend><div class="seg" id="sizeSeg"></div></fieldset>
-    <fieldset><legend>Difficulty</legend><div class="seg" id="diffSeg"></div></fieldset>
+    <div class="group" role="group" aria-labelledby="shapeLabel"><div class="glabel" id="shapeLabel">Board shape</div><div class="seg" id="shapeSeg"></div></div>
+    <div class="group" id="kField" role="group" aria-labelledby="kLabel"><div class="glabel" id="kLabel">Hoops per region</div><div class="seg" id="kSeg"></div></div>
+    <div class="group" role="group" aria-labelledby="sizeLabel"><div class="glabel" id="sizeLabel">Size</div><div class="seg" id="sizeSeg"></div></div>
+    <div class="group" role="group" aria-labelledby="diffLabel"><div class="glabel" id="diffLabel">Difficulty</div><div class="seg" id="diffSeg"></div></div>
     <div class="rowbtns"><button class="primary" id="ownStart">Start</button><button id="ownBack">Back</button></div>
   </div>
 
