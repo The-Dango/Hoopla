@@ -74,9 +74,13 @@ Two findings worth not rediscovering:
   `/System/Library/Frameworks/JavaScriptCore.framework/Versions/A/Helpers/jsc engine.js logic.js test.js`
   (use `print`). It is unthrottled, unlike the hidden browser pane, so it is where build
   timings should be measured.
-- Two setups are slow because they rarely generate at all and the builder keeps going until
-  one does: big Blank (Wednesday's daily) and big two-hoop Carved (Brutal). Up to ~7s on a
-  Mac, measured in `jsc`.
+- **Every setup builds in under a second** (slowest ~0.85s on a Mac in `jsc`, all 51 setups,
+  12 seeds each, no failures, 4 of 612 off-grade). Keep it there: re-run that benchmark after
+  any generator change. Big Blank and big two-hoop Carved used to take up to 6s or fail; the
+  causes were a solver that ignored givens and a repair that gave up in carved corridors.
+- **Hoops handed to the player are capped by board size** (`Engine.givenCap`): up to 64
+  squares 1, up to 90 squares 2, above that 4. Jeremy's rule. Generator pins and the
+  builder's too-hard pins share the cap, and a final pass removes any the puzzle does not need.
 - Region colours are shuffled per board by `colorRegions`, so the same board looks different
   between sessions. Only the tutorial opts out.
 

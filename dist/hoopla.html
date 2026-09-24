@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Hoopla</title>
-<meta name="build" content="0.13.2 · 2026-09-23">
+<meta name="build" content="0.13.3 · 2026-09-23">
 <meta name="description" content="A logic puzzle game in the family of Sudoku, Star Battle and Queens. Drop hoops so every region, row and column holds the right number, and no two hoops ever touch.">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
@@ -504,6 +504,9 @@ const Engine = (() => {
     for (const c of cells) { rowRem[(c / W) | 0]++; colRem[c % W]++; regRem[region[c]]++; }
     const rowCnt = new Int16Array(H), colCnt = new Int16Array(W), regCnt = new Int16Array(R);
     const star = new Uint8Array(W * H); const sols = []; let nodes = 0, aborted = false;
+    // Givens are hoops placed for the player, so every solution must hold them.
+    // Without this, pinning a given to rule out a second solution changed nothing.
+    const given = new Uint8Array(W * H); for (const c of p.givens || []) given[c] = 1;
     // quick infeasibility
     for (let y = 0; y < H; y++) if (rowT[y] > rowRem[y]) return { sols, nodes, aborted };
     for (let x = 0; x < W; x++) if (colT[x] > colRem[x]) return { sols, nodes, aborted };
@@ -521,15 +524,16 @@ const Engine = (() => {
         star[c] = 0; rowCnt[y]--; colCnt[x]--; regCnt[g]--;
         if (sols.length >= limit || aborted) { rowRem[y]++; colRem[x]++; regRem[g]++; return; }
       }
-      if (ok(y, x, g)) rec(i + 1);
+      if (!given[c] && ok(y, x, g)) rec(i + 1);
       rowRem[y]++; colRem[x]++; regRem[g]++;
     }
     rec(0);
     return { sols, nodes, aborted };
   }
 
-  function regionConnectedWithout(W, H, reg, g, removed) {
-    const cells = []; for (let c = 0; c < W * H; c++) if (reg[c] === g && c !== removed) cells.push(c);
+  function regionConnectedWithout(W, H, reg, g, removed) { // removed: one cell, or a Set of them
+    const gone = typeof removed === 'number' ? new Set([removed]) : removed;
+    const cells = []; for (let c = 0; c < W * H; c++) if (reg[c] === g && !gone.has(c)) cells.push(c);
     if (!cells.length) return false;
     const inR = new Set(cells), seen = new Set([cells[0]]), st = [cells[0]];
     while (st.length) { const c = st.pop(), x = c % W, y = (c / W) | 0;
@@ -537,6 +541,11 @@ const Engine = (() => {
         const nc = ny * W + nx; if (inR.has(nc) && !seen.has(nc)) { seen.add(nc); st.push(nc); } } }
     return seen.size === cells.length;
   }
+
+  // Most hoops a board may start with, by size: small boards none or one, medium up to
+  // two, large up to four. Shared by the generator's pins and the builder's, so the
+  // total a player is handed never goes past it.
+  function givenCap(mask) { const n = mask.filter(Boolean).length; return n <= 64 ? 1 : n <= 90 ? 2 : 4; }
 
   // ---- main generator ----
   const SIZES = {
@@ -551,7 +560,7 @@ const Engine = (() => {
   // fast one succeeded, so one seed could build a different board, or none,
   // depending on the phone. 12.5M nodes is about the old 500ms on a recent Mac.
   // Pass a meter ({ work: 0 }) to be told the work spent, success or not.
-  const WORK_CAP = 12.5e6;
+  const WORK_CAP = 12.5e6, BATCH = 64, STRIP_MAX = 4;
   function generate({ shape = 'square', k = 1, size = 0, holes = false, regions = true, seed = Date.now(), workCap = WORK_CAP, meter = null } = {}) {
     const r = rng(seed), t0 = Date.now();
     const n = arguments[0].n || SIZES[shape][k][size ? 1 : 0];
@@ -579,22 +588,27 @@ const Engine = (() => {
       for (const c of starList) { rowT[(c / W) | 0]++; colT[c % W]++; }
       const p = { W, H, mask, region, rowT, colT, k: regions ? k : starList.length, R, uniform, regions,
         solution: starList.slice().sort((a, b) => a - b), givens: [] };
-      let good = false;
+      let good = false; const cap = givenCap(mask);
       for (let rep = 0; rep < 80; rep++) {
         // The cap holds inside an attempt too: one run of repairs could otherwise spend
         // many times it, which is where the slow boards spent their time.
         if (work > workCap) break;
-        const res = solve(p, 2, Math.min(4e6, workCap - work + 1)); work += res.nodes; if (meter) meter.work += res.nodes;
+        // Without regions, ask for a batch of solutions so the next given can be chosen well.
+        const res = solve(p, regions ? 2 : BATCH, Math.min(4e6, workCap - work + 1)); work += res.nodes; if (meter) meter.work += res.nodes;
         if (res.aborted) break;
         if (res.sols.length === 1) { good = true; break; }
         const truth = new Set(p.solution);
         const alt = res.sols.find(s => s.length !== truth.size || s.some(c => !truth.has(c)));
         if (!alt) break;
-        if (!regions) { // no regions to reshape, so pin down a star the other solution disagrees about
-          const cand = shuffle(p.solution.filter(c => !alt.includes(c) && !p.givens.includes(c)), r);
-          if (!cand.length || p.givens.length > p.solution.length * 0.6) break;
-          for (const c of cand.slice(0, 2)) p.givens.push(c);
-          repairsTotal++; continue;
+        if (!regions) { // no regions to reshape, so pin down a star: the one that the most
+          // other solutions lack, so as few hoops as possible are handed to the player
+          if (p.givens.length >= cap) break;
+          const seen = new Map(); for (const s of res.sols) for (const c of s) seen.set(c, (seen.get(c) || 0) + 1);
+          let pick = -1, fewest = Infinity;
+          for (const c of shuffle(p.solution.filter(c => !p.givens.includes(c)), r)) {
+            const n = seen.get(c) || 0; if (n < fewest) { fewest = n; pick = c; } }
+          if (pick < 0) break;
+          p.givens.push(pick); repairsTotal++; continue;
         }
         const cand = shuffle(alt.filter(c => !truth.has(c)), r);
         let moved = false;
@@ -604,15 +618,45 @@ const Engine = (() => {
           if (!ns.length) continue;
           if (!regionConnectedWithout(W, H, region, g, c)) continue;
           region[c] = ns[0]; moved = true; repairsTotal++; break; }
-        if (!moved) break;
+        // No neighbour colour touches the stray hoop: carry a strip of its colour, from
+        // the hoop to the nearest square that does touch another colour, over into that
+        // colour. The strip holds no real hoop, so the true solution is untouched.
+        for (const c of cand) { if (moved) break; const g = region[c];
+          const prev = new Map([[c, -1]]), q = [c]; let end = -1, h = -1;
+          for (let qi = 0; qi < q.length && end < 0; qi++) { const u = q[qi], x = u % W, y = (u / W) | 0;
+            for (const [dx, dy] of ADJ4) { const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+              const v = ny * W + nx, o = region[v]; if (o < 0) continue;
+              if (o !== g) { end = u; h = o; break; }
+              if (!prev.has(v) && !truth.has(v) && !p.givens.includes(v)) { prev.set(v, u); q.push(v); } } }
+          if (end < 0) continue;
+          const strip = new Set(); for (let u = end; u >= 0; u = prev.get(u)) strip.add(u);
+          if (strip.size > STRIP_MAX || !regionConnectedWithout(W, H, region, g, strip)) continue;
+          for (const u of strip) region[u] = h; moved = true; repairsTotal++; }
+        if (!moved) {
+          // Still stuck: rather than throw away the whole board, place one of the real
+          // hoops for the player, which the other solution lacks. Never past givenCap,
+          // and the pass below takes back any that turn out not to be needed.
+          if (p.givens.length >= cap) break;
+          const pin = shuffle(p.solution.filter(c => !alt.includes(c) && !p.givens.includes(c)), r)[0];
+          if (pin === undefined) break;
+          p.givens.push(pin); repairsTotal++;
+        }
       }
       if (!good) continue;
+      // Pinned hoops got the board to one solution quickly, but later repairs often make
+      // some of them unnecessary. Take each away in turn and keep it off if the puzzle
+      // is still unique without it: the player should be handed as little as possible.
+      for (const c of shuffle(p.givens.slice(), r)) {
+        const keep = p.givens; p.givens = keep.filter(g => g !== c);
+        const res = solve(p, 2, 4e6); work += res.nodes; if (meter) meter.work += res.nodes;
+        if (res.aborted || res.sols.length !== 1) p.givens = keep;
+      }
       const fin = solve(p, 2, 4e6); work += fin.nodes; if (meter) meter.work += fin.nodes;
       p.stats = { ms: Date.now() - t0, attempts, repairs: repairsTotal, effort: fin.nodes, work };
       return p;
     }
   }
-  return { generate, solve, SIZES, Shapes };
+  return { generate, solve, givenCap, SIZES, Shapes };
 })();
 if (typeof module !== 'undefined') module.exports = Engine;
 
@@ -750,7 +794,7 @@ const Logic = (() => {
     t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
   // Same options and seed always give the same board, so two people can play an identical puzzle.
   // The builder runs one attempt at a time, so it can be used straight through or spread over idle moments.
-  const BUILD_WORK = 30e6;
+  const BUILD_WORK = 20e6;
   function makeBuilder(Engine, opts) {
     const blank = opts.shape === 'blank';
     if (blank || opts.regions === false) opts = { ...opts, k: 1 }; // without regions, stars per region means nothing
@@ -766,13 +810,17 @@ const Logic = (() => {
     return {
       get best() { return best; },
       // Stops on work done, never on time, so a slow phone builds exactly the board
-      // a fast one does, only later. BUILD_WORK is about the old 1.2s budget on a
-      // recent Mac. With nothing found yet it keeps going, up to eight times that:
-      // a seed that finds nothing now finds nothing on every device, so giving up
-      // early would mean no daily for anyone. Only two setups ever need it (big
-      // blank, big two-hoop carved), measured at up to ~7s on a Mac.
-      done() { return bestDist === 0 || (best && attempts >= 40) || (best && bestDist <= 1 && attempts >= 12)
-        || meter.work > BUILD_WORK * (best ? 1 : 8); },
+      // a fast one does, only later. While attempts are cheap it keeps looking for one
+      // at exactly the asked difficulty (up to 200 of them) instead of settling for
+      // close; BUILD_WORK (~0.8s on a recent Mac) ends the search on dear boards. With
+      // nothing found yet it may run to eight times that rather than return nothing,
+      // since a seed that finds nothing does so on every device. Measured across all
+      // 51 picker and daily setups: nothing fails, the slowest build is ~0.85s.
+      done() { const dear = meter.work > BUILD_WORK / 4;
+        return bestDist === 0
+          || (best && attempts >= 40 && (dear || attempts >= 200))
+          || (best && bestDist <= 1 && attempts >= 12 && dear)
+          || meter.work > BUILD_WORK * (best ? 1 : 8); },
       finish() {
         if (!best) return null;
         best.stats.ms = Date.now() - t0; best.difficulty = best.grade.difficulty; best.asked = opts.difficulty;
@@ -785,7 +833,7 @@ const Logic = (() => {
         if (!P) return;
         P.units = units(P); P.size = opts.size; P.difficulty = opts.difficulty; P.givens = P.givens || [];
         let g = grade(P);
-        const maxGivens = Math.max(1, Math.floor(P.solution.length * 0.35));
+        const maxGivens = Engine.givenCap(P.mask);
         while (g.maxLevel > hi && P.givens.length < maxGivens) {
           const left = P.solution.filter(c => !P.givens.includes(c));
           P.givens.push(left[Math.floor(rnd() * left.length)]); g = grade(P);

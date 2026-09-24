@@ -315,8 +315,15 @@ inside a sort comparator, whose call count differs between engines. A slow phone
 exactly the board a fast one does, only later. All 51 picker and daily setups were checked
 to fingerprint identically in Chrome and in Safari's engine. When a seed has found nothing
 within the normal budget the builder keeps going, up to eight times it, rather than
-returning nothing, because a seed that fails now fails on every device. Only big Blank and
-big two-hoop Carved ever need that, and they can take several seconds.
+returning nothing, because a seed that fails now fails on every device. In practice nothing
+needs it: across all 51 setups every build succeeds and the slowest takes ~0.85s on a Mac.
+
+The generator reaches a single solution by reshaping colours, and where that is impossible
+(a stray hoop in a carved corridor, or a board with no colours at all) by placing a real
+hoop for the player. How many a board may start with is capped by its size: up to 64
+squares one, up to 90 two, larger four. That cap also bounds the hoops the builder places
+to bring a too-hard board down to its grade, and a final pass takes back any placed hoop
+the puzzle turns out not to need, so most boards start with none or one.
 
 ## Data format
 

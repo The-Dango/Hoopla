@@ -132,7 +132,7 @@ const Logic = (() => {
     t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
   // Same options and seed always give the same board, so two people can play an identical puzzle.
   // The builder runs one attempt at a time, so it can be used straight through or spread over idle moments.
-  const BUILD_WORK = 30e6;
+  const BUILD_WORK = 20e6;
   function makeBuilder(Engine, opts) {
     const blank = opts.shape === 'blank';
     if (blank || opts.regions === false) opts = { ...opts, k: 1 }; // without regions, stars per region means nothing
@@ -148,13 +148,17 @@ const Logic = (() => {
     return {
       get best() { return best; },
       // Stops on work done, never on time, so a slow phone builds exactly the board
-      // a fast one does, only later. BUILD_WORK is about the old 1.2s budget on a
-      // recent Mac. With nothing found yet it keeps going, up to eight times that:
-      // a seed that finds nothing now finds nothing on every device, so giving up
-      // early would mean no daily for anyone. Only two setups ever need it (big
-      // blank, big two-hoop carved), measured at up to ~7s on a Mac.
-      done() { return bestDist === 0 || (best && attempts >= 40) || (best && bestDist <= 1 && attempts >= 12)
-        || meter.work > BUILD_WORK * (best ? 1 : 8); },
+      // a fast one does, only later. While attempts are cheap it keeps looking for one
+      // at exactly the asked difficulty (up to 200 of them) instead of settling for
+      // close; BUILD_WORK (~0.8s on a recent Mac) ends the search on dear boards. With
+      // nothing found yet it may run to eight times that rather than return nothing,
+      // since a seed that finds nothing does so on every device. Measured across all
+      // 51 picker and daily setups: nothing fails, the slowest build is ~0.85s.
+      done() { const dear = meter.work > BUILD_WORK / 4;
+        return bestDist === 0
+          || (best && attempts >= 40 && (dear || attempts >= 200))
+          || (best && bestDist <= 1 && attempts >= 12 && dear)
+          || meter.work > BUILD_WORK * (best ? 1 : 8); },
       finish() {
         if (!best) return null;
         best.stats.ms = Date.now() - t0; best.difficulty = best.grade.difficulty; best.asked = opts.difficulty;
@@ -167,7 +171,7 @@ const Logic = (() => {
         if (!P) return;
         P.units = units(P); P.size = opts.size; P.difficulty = opts.difficulty; P.givens = P.givens || [];
         let g = grade(P);
-        const maxGivens = Math.max(1, Math.floor(P.solution.length * 0.35));
+        const maxGivens = Engine.givenCap(P.mask);
         while (g.maxLevel > hi && P.givens.length < maxGivens) {
           const left = P.solution.filter(c => !P.givens.includes(c));
           P.givens.push(left[Math.floor(rnd() * left.length)]); g = grade(P);
